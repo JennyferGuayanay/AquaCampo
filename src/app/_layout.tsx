@@ -1,18 +1,44 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { Stack } from "expo-router";
 
-SplashScreen.preventAutoHideAsync();
+import {
+  QueryClient,
+  QueryClientProvider
+} from "@tanstack/react-query";
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+const queryClient = new QueryClient();
+
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: "#102C46"
+          },
+          headerTintColor: "#FFFFFF",
+          headerTitleStyle: {
+            fontWeight: "bold"
+          },
+          contentStyle: {
+            backgroundColor: "#EAF7F9"
+          }
+        }}
+      >
+        <Stack.Screen
+          name="index"
+          options={{
+            headerShown: false
+          }}
+        />
+
+        <Stack.Screen
+          name="explore"
+          options={{
+            title: "Explorar"
+          }}
+        />
+      </Stack>
+    </QueryClientProvider>
   );
 }
