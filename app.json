@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "AquaCampo",
@@ -20,8 +19,11 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "CAMERA"
-      ]
+        "CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.jennyferg.AquaCampo"
     },
     "web": {
       "output": "static",
@@ -49,6 +51,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a56807d7-fc74-44bd-8f6e-f6e62ee5848d"
+      }
     }
   }
 }

@@ -26,7 +26,11 @@ function crearConflicto(
   tipo: NonNullable<Lectura["conflicto"]>["tipo"],
   detalle: string,
 ) {
-  return { tipo, detalle, detectadoEn: new Date().toISOString() };
+  return {
+    tipo,
+    detalle,
+    detectadoEn: new Date().toISOString(),
+  };
 }
 
 function mismoContenido(local: Lectura, remoto: Lectura) {
@@ -64,6 +68,7 @@ export function crearSincronizador(dependencias: DependenciasSync) {
     try {
       const lecturas = await dependencias.obtenerLecturas();
       const medidores = await dependencias.obtenerMedidores();
+
       let remotas: Lectura[];
 
       try {
@@ -74,7 +79,10 @@ export function crearSincronizador(dependencias: DependenciasSync) {
       }
 
       for (const original of lecturas) {
-        if (original.estadoSync === "enviado") continue;
+        if (original.estadoSync === "enviado") {
+          continue;
+        }
+
         if (original.estadoSync === "conflicto") {
           resultado.conflictos++;
           continue;
@@ -82,12 +90,14 @@ export function crearSincronizador(dependencias: DependenciasSync) {
 
         let lectura = original;
 
+        // R9: recuperar envios interrumpidos.
         if (lectura.estadoSync === "enviando") {
           lectura = await dependencias.actualizarLectura(lectura.idLocal, {
             estadoSync: "incierto",
           });
         }
 
+        // R9: comprobar si el servidor ya recibio la lectura.
         const remotaMismoId = remotas.find(
           (item) => item.idLocal === lectura.idLocal,
         );
@@ -101,16 +111,18 @@ export function crearSincronizador(dependencias: DependenciasSync) {
                 "Existe un registro remoto con el mismo identificador, pero sus datos son diferentes.",
               ),
             });
+
             resultado.conflictos++;
             continue;
           }
+
           await dependencias.actualizarLectura(lectura.idLocal, {
             estadoSync: "enviado",
             conflicto: null,
             enviadoEn: new Date().toISOString(),
-            idRemoto:
-              "id" in remotaMismoId ? String(remotaMismoId.id) : null,
+            idRemoto: "id" in remotaMismoId ? String(remotaMismoId.id) : null,
           });
+
           resultado.enviados++;
           continue;
         }
@@ -119,12 +131,15 @@ export function crearSincronizador(dependencias: DependenciasSync) {
           await dependencias.actualizarLectura(lectura.idLocal, {
             estadoSync: "pendiente",
           });
+
           resultado.inciertos++;
           continue;
         }
 
+        // R4: revisar lecturas pendientes de verificacion.
         if (lectura.pendienteVerificacion) {
           let medidor: Medidor | undefined = medidores[lectura.codigoMedidor];
+
           if (!medidor) {
             try {
               medidor =
@@ -141,17 +156,20 @@ export function crearSincronizador(dependencias: DependenciasSync) {
               estadoSync: "conflicto",
               conflicto: crearConflicto(
                 "medidor_no_encontrado",
-                "El código no existe en el registro remoto y requiere revisión.",
+                "El codigo no existe en el registro remoto y requiere revision.",
               ),
             });
+
             resultado.conflictos++;
             continue;
           }
 
           await dependencias.guardarMedidor(medidor);
+
           let consumo: number | null = null;
 
-          if (lectura.lecturaActual !== null) {
+          // R4: nunca convertir una lectura anterior null a 0.
+          if (lectura.lecturaActual !== null && medidor.ultimaLectura != null) {
             consumo = calcularConsumo(
               lectura.lecturaActual,
               Number(medidor.ultimaLectura),
@@ -166,10 +184,12 @@ export function crearSincronizador(dependencias: DependenciasSync) {
                   "La lectura es menor que la lectura anterior del medidor.",
                 ),
               });
+
               resultado.conflictos++;
               continue;
             }
 
+            // R6: comprobar anomalías al reconectar.
             if (
               esAnomalo(consumo, Number(medidor.promedioMensual)) &&
               (!lectura.confirmacionAnomalia || !lectura.fotoUri)
@@ -179,22 +199,32 @@ export function crearSincronizador(dependencias: DependenciasSync) {
                 estadoSync: "conflicto",
                 conflicto: crearConflicto(
                   "anomalia_reconexion",
-                  "El consumo supera tres veces el promedio. Confirma la revisión y adjunta una foto.",
+                  "El consumo supera tres veces el promedio. Confirma la revision y adjunta una foto.",
                 ),
               });
+
               resultado.verificacion++;
               resultado.conflictos++;
               continue;
             }
           }
 
+          // R4: conservar la marca si falta la lectura anterior.
+          const requiereVerificacion =
+            lectura.lecturaActual !== null && medidor.ultimaLectura == null;
+
           lectura = await dependencias.actualizarLectura(lectura.idLocal, {
             consumo,
-            pendienteVerificacion: false,
+            pendienteVerificacion: requiereVerificacion,
             conflicto: null,
           });
+
+          if (requiereVerificacion) {
+            resultado.verificacion++;
+          }
         }
 
+        // R10: evitar otra lectura del mismo medidor y mes.
         const duplicada = remotas.find(
           (item) =>
             item.codigoMedidor === lectura.codigoMedidor &&
@@ -210,10 +240,12 @@ export function crearSincronizador(dependencias: DependenciasSync) {
               "Ya existe otra lectura remota para este medidor y mes.",
             ),
           });
+
           resultado.conflictos++;
           continue;
         }
 
+        // R9: marcar el intento antes de enviar.
         lectura = await dependencias.actualizarLectura(lectura.idLocal, {
           estadoSync: "enviando",
           intentoEn: new Date().toISOString(),
@@ -221,22 +253,26 @@ export function crearSincronizador(dependencias: DependenciasSync) {
 
         try {
           const remota = await dependencias.enviarLectura(lectura);
+
           if (!mismoContenido(lectura, remota)) {
             await dependencias.actualizarLectura(lectura.idLocal, {
               estadoSync: "conflicto",
               conflicto: crearConflicto(
                 "respuesta_divergente",
-                "El servidor respondió con datos diferentes a la lectura enviada.",
+                "El servidor respondio con datos diferentes a la lectura enviada.",
               ),
             });
+
             resultado.conflictos++;
             continue;
           }
+
           await dependencias.actualizarLectura(lectura.idLocal, {
             estadoSync: "enviado",
             enviadoEn: new Date().toISOString(),
             idRemoto: remota.id ? String(remota.id) : null,
           });
+
           remotas.push(remota);
           resultado.enviados++;
         } catch (error) {
@@ -244,19 +280,26 @@ export function crearSincronizador(dependencias: DependenciasSync) {
             typeof error === "object" && error && "status" in error
               ? Number(error.status)
               : null;
+
           const esErrorCorregible =
             status !== null && [400, 409, 422].includes(status);
+
           await dependencias.actualizarLectura(lectura.idLocal, {
             estadoSync: esErrorCorregible ? "conflicto" : "incierto",
             conflicto: esErrorCorregible
               ? crearConflicto(
                   "respuesta_divergente",
-                  "El servidor rechazó los datos. Revisa la lectura antes de intentar nuevamente.",
+                  "El servidor rechazo los datos. Revisa la lectura antes de intentar nuevamente.",
                 )
               : null,
           });
-          if (esErrorCorregible) resultado.conflictos++;
-          else resultado.inciertos++;
+
+          if (esErrorCorregible) {
+            resultado.conflictos++;
+          } else {
+            resultado.inciertos++;
+          }
+
           resultado.errores++;
         }
       }

@@ -143,7 +143,7 @@ export default function Registro() {
       confirmacionAnomalia: anomalo ? valor.confirmado : false,
       fotoUri: valor.fotoUri,
       estadoSync: "pendiente",
-      pendienteVerificacion: !medidor,
+      pendienteVerificacion: !medidor || medidor.ultimaLectura == null,
       conflicto: null,
     };
 
