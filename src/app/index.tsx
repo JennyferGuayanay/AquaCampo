@@ -54,9 +54,11 @@ export default function Inicio() {
   const [empleado, setEmpleado] = useState("");
   const [clave, setClave] = useState("");
   const [pantalla, setPantalla] = useState<Pantalla>("inicio");
+
   const [codigo, setCodigo] = useState("");
   const [medidor, setMedidor] = useState<Medidor | null>(null);
   const [buscando, setBuscando] = useState(false);
+
   const [estado, setEstado] = useState<EstadoMedidor>("normal");
   const [lectura, setLectura] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -64,27 +66,74 @@ export default function Inicio() {
   const [confirmado, setConfirmado] = useState(false);
   const [fotoUri, setFotoUri] = useState<string | null>(null);
   const [mostrarCamara, setMostrarCamara] = useState(false);
+
   const [lecturas, setLecturas] = useState<Lectura[]>([]);
   const [editando, setEditando] = useState<string | null>(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [listo, setListo] = useState(false);
 
   const actualizar = useCallback(async () => {
-    setLecturas(await obtenerLecturas());
+    const datos = await obtenerLecturas();
+    setLecturas(datos);
   }, []);
 
-  const sincronizar = useCallback(async () => {
-    if (!conectado) return;
-    setSincronizando(true);
-    try {
-      await sincronizarLecturas();
-    } catch {
-      // La cola se conserva para un intento posterior.
-    } finally {
-      await actualizar();
-      setSincronizando(false);
-    }
-  }, [conectado, actualizar]);
+  const sincronizar = useCallback(
+    async (mostrarMensaje = false) => {
+      if (!conectado) {
+        if (mostrarMensaje) {
+          Alert.alert(
+            "Sin conexión",
+            "Las lecturas se conservarán hasta recuperar internet.",
+          );
+        }
+        return;
+      }
+
+      setSincronizando(true);
+
+      try {
+        const resultado = await sincronizarLecturas();
+        await actualizar();
+
+        if (mostrarMensaje) {
+          Alert.alert(
+            "Resultado de sincronización",
+            `Enviados o confirmados: ${resultado.enviados}\n` +
+              `Requieren verificación: ${resultado.verificacion}\n` +
+              `Conflictos: ${resultado.conflictos}\n` +
+              `Errores de red: ${resultado.errores}`,
+          );
+        }
+      } catch {
+        if (mostrarMensaje) {
+          Alert.alert(
+            "Error de sincronización",
+            "No se pudo completar. Las lecturas siguen guardadas.",
+          );
+        }
+      } finally {
+        await actualizar();
+        setSincronizando(false);
+      }
+    },
+    [conectado, actualizar],
+  );
+
+  // Recuperar los campos y los datos del medidor.
+  async function recuperarBorrador(borrador: Borrador) {
+    const cache = await obtenerMedidores();
+
+    setCodigo(borrador.codigo);
+    setMedidor(cache[borrador.codigo] ?? null);
+    setEstado(borrador.estado);
+    setLectura(borrador.lectura);
+    setMotivo(borrador.motivo);
+    setDescripcion(borrador.descripcion);
+    setConfirmado(borrador.confirmado);
+    setFotoUri(borrador.fotoUri);
+    setEditando(null);
+    setPantalla("registro");
+  }
 
   useEffect(() => {
     async function iniciar() {
@@ -92,11 +141,13 @@ export default function Inicio() {
         const usuario = await obtenerSesion();
         setSesion(usuario);
         await actualizar();
+
         const borrador = await obtenerBorrador();
+
         if (usuario && borrador) {
           Alert.alert(
             "Registro incompleto",
-            "¿Deseas continuar el registro anterior?",
+            "Encontramos un registro sin terminar. ¿Deseas continuarlo?",
             [
               {
                 text: "Descartar",
@@ -108,15 +159,8 @@ export default function Inicio() {
               },
               {
                 text: "Continuar",
-                onPress: () => {
-                  setCodigo(borrador.codigo);
-                  setEstado(borrador.estado);
-                  setLectura(borrador.lectura);
-                  setMotivo(borrador.motivo);
-                  setDescripcion(borrador.descripcion);
-                  setConfirmado(borrador.confirmado);
-                  setFotoUri(borrador.fotoUri);
-                  setPantalla("registro");
+                onPress: async () => {
+                  await recuperarBorrador(borrador);
                   setListo(true);
                 },
               },
@@ -125,15 +169,24 @@ export default function Inicio() {
         } else {
           setListo(true);
         }
+      } catch {
+        Alert.alert(
+          "Error",
+          "No se pudieron recuperar todos los datos locales.",
+        );
+        setListo(true);
       } finally {
         setCargando(false);
       }
     }
+
     iniciar();
   }, [actualizar]);
 
+  // Guardar automáticamente los cambios del formulario.
   useEffect(() => {
     if (!sesion || !listo || pantalla !== "registro") return;
+
     const borrador: Borrador = {
       codigo,
       estado,
@@ -143,6 +196,7 @@ export default function Inicio() {
       confirmado,
       fotoUri,
     };
+
     guardarBorrador(borrador).catch(() => {});
   }, [
     sesion,
@@ -157,13 +211,22 @@ export default function Inicio() {
     fotoUri,
   ]);
 
+  // Sincronizar al recuperar la conexión y mientras está abierta.
   useEffect(() => {
     if (!conectado || !sesion) return;
+
     sincronizar();
-    const intervalo = setInterval(sincronizar, 12000);
+
+    const intervalo = setInterval(() => {
+      sincronizar();
+    }, 12000);
+
     const sub = AppState.addEventListener("change", (valor) => {
-      if (valor === "active") sincronizar();
+      if (valor === "active") {
+        sincronizar();
+      }
     });
+
     return () => {
       clearInterval(intervalo);
       sub.remove();
@@ -172,7 +235,7 @@ export default function Inicio() {
 
   async function entrar() {
     if (empleado.trim().toUpperCase() !== "TEC001" || clave !== "123456") {
-      Alert.alert("Acceso denegado", "Código o clave incorrectos.");
+      Alert.alert("Acceso denegado", "Código o contraseña incorrectos.");
       return;
     }
 
@@ -187,18 +250,32 @@ export default function Inicio() {
     setPantalla("inicio");
   }
 
+  function limpiar() {
+    setCodigo("");
+    setMedidor(null);
+    setEstado("normal");
+    setLectura("");
+    setMotivo("");
+    setDescripcion("");
+    setConfirmado(false);
+    setFotoUri(null);
+    setEditando(null);
+  }
+
   async function buscar() {
     const valor = codigo.trim().toUpperCase();
     setCodigo(valor);
 
     if (!validarCodigo(valor)) {
-      Alert.alert("Código incorrecto", "Formato requerido: MED-123456");
+      Alert.alert("Código incorrecto", "El formato obligatorio es MED-123456.");
       return;
     }
 
     setBuscando(true);
+
     try {
       const cache = await obtenerMedidores();
+
       if (cache[valor]) {
         setMedidor(cache[valor]);
         setPantalla("registro");
@@ -212,10 +289,15 @@ export default function Inicio() {
       }
 
       const encontrado = await obtenerMedidor(valor);
+
       if (!encontrado) {
-        Alert.alert("No encontrado", "No existe ese medidor.");
+        Alert.alert(
+          "Medidor no encontrado",
+          "No existe un medidor con ese código.",
+        );
         return;
       }
+
       await guardarMedidor(encontrado);
       setMedidor(encontrado);
       setPantalla("registro");
@@ -223,7 +305,7 @@ export default function Inicio() {
       setMedidor(null);
       Alert.alert(
         "Consulta no disponible",
-        "Puedes continuar sin datos previos. Se verificará después.",
+        "Puedes registrar una lectura pendiente de verificación.",
       );
       setPantalla("registro");
     } finally {
@@ -234,14 +316,16 @@ export default function Inicio() {
   async function tomarFoto() {
     if (!permiso?.granted) {
       const respuesta = await solicitarPermiso();
+
       if (!respuesta.granted) {
         Alert.alert(
           "Permiso de cámara",
-          "Necesitamos la cámara para respaldar medidores dañados o consumos anómalos. Puedes continuar sin foto cuando sea opcional.",
+          "No se concedió acceso a la cámara. La fotografía es obligatoria para medidores dañados y anomalías.",
         );
         return;
       }
     }
+
     setMostrarCamara(true);
   }
 
@@ -250,25 +334,18 @@ export default function Inicio() {
       const resultado = await camara.current?.takePictureAsync({
         quality: 0.65,
       });
-      if (!resultado?.uri) return;
-      const guardada = await conservarFoto(resultado.uri);
-      setFotoUri(guardada);
+
+      if (!resultado?.uri) {
+        Alert.alert("Cámara", "No se pudo capturar la imagen.");
+        return;
+      }
+
+      const ruta = await conservarFoto(resultado.uri);
+      setFotoUri(ruta);
       setMostrarCamara(false);
     } catch {
-      Alert.alert("Error", "No se pudo guardar la fotografía.");
+      Alert.alert("Error de cámara", "No se pudo conservar la fotografía.");
     }
-  }
-
-  function limpiar() {
-    setCodigo("");
-    setMedidor(null);
-    setEstado("normal");
-    setLectura("");
-    setMotivo("");
-    setDescripcion("");
-    setConfirmado(false);
-    setFotoUri(null);
-    setEditando(null);
   }
 
   const lecturaValida =
@@ -286,7 +363,7 @@ export default function Inicio() {
 
   async function guardar() {
     if (!sesion || !validarCodigo(codigo)) {
-      Alert.alert("Error", "Código de medidor inválido.");
+      Alert.alert("Error", "El código del medidor es inválido.");
       return;
     }
 
@@ -296,13 +373,17 @@ export default function Inicio() {
       motivo,
       descripcion,
     );
+
     if (error) {
       Alert.alert("Validación", error);
       return;
     }
 
     if (consumo !== null && consumo < 0) {
-      Alert.alert("Lectura inválida", "Es menor que la anterior.");
+      Alert.alert(
+        "Lectura inválida",
+        "La lectura actual no puede ser menor que la anterior.",
+      );
       return;
     }
 
@@ -317,12 +398,10 @@ export default function Inicio() {
     }
 
     const ahora = new Date();
-    const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(
-      2,
-      "0",
-    )}`;
+    const mes =
+      `${ahora.getFullYear()}-` + String(ahora.getMonth() + 1).padStart(2, "0");
 
-    const anterior = lecturas.find((l) => l.idLocal === editando);
+    const anterior = lecturas.find((item) => item.idLocal === editando);
 
     const registro: Lectura = {
       idLocal:
@@ -330,15 +409,15 @@ export default function Inicio() {
         `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       codigoMedidor: codigo,
       tecnico: sesion,
-      fecha: ahora.toISOString(),
-      mes,
+      fecha: anterior?.fecha ?? ahora.toISOString(),
+      mes: anterior?.mes ?? mes,
       estadoMedidor: estado,
       lecturaActual:
         estado === "inaccesible" || !lectura.trim() ? null : Number(lectura),
       consumo: estado === "inaccesible" ? null : consumo,
       motivo: estado === "inaccesible" ? motivo : "",
       descripcionDanio: estado === "dañado" ? descripcion : "",
-      confirmacionAnomalia: confirmado,
+      confirmacionAnomalia: anomalo ? confirmado : false,
       fotoUri,
       estadoSync: "pendiente",
       pendienteVerificacion: !medidor,
@@ -348,21 +427,34 @@ export default function Inicio() {
       await guardarLectura(registro);
       await borrarBorrador();
       await actualizar();
+
       limpiar();
       setPantalla("pendientes");
-      Alert.alert("Guardado", "Registro conservado en el teléfono.");
-      if (conectado) await sincronizar();
+
+      Alert.alert("Guardado", "La lectura quedó conservada en el teléfono.");
+
+      if (conectado) {
+        await sincronizar();
+      }
     } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Error al guardar");
+      Alert.alert(
+        "Error",
+        e instanceof Error ? e.message : "No se pudo guardar.",
+      );
     }
   }
 
   async function editar(item: Lectura) {
     if (item.estadoSync === "enviado") {
-      Alert.alert("Bloqueado", "No se puede editar una lectura enviada.");
+      Alert.alert(
+        "Lectura bloqueada",
+        "Los registros enviados no se pueden editar.",
+      );
       return;
     }
+
     const cache = await obtenerMedidores();
+
     setMedidor(cache[item.codigoMedidor] ?? null);
     setCodigo(item.codigoMedidor);
     setEstado(item.estadoMedidor);
@@ -386,8 +478,8 @@ export default function Inicio() {
   }) {
     return (
       <TouchableOpacity
-        onPress={onPress}
         style={[s.boton, secundario && s.botonSecundario]}
+        onPress={onPress}
       >
         <Text style={[s.textoBoton, secundario && s.textoSecundario]}>
           {titulo}
@@ -408,9 +500,11 @@ export default function Inicio() {
     return (
       <View style={s.login}>
         <Text style={s.marca}>💧 AquaCampo</Text>
-        <Text style={s.descripcion}>Gestión inteligente de lecturas</Text>
+        <Text style={s.descripcion}>Gestión de lecturas de agua</Text>
+
         <View style={s.tarjeta}>
           <Text style={s.titulo}>Acceso del técnico</Text>
+
           <TextInput
             style={s.input}
             placeholder="Código de empleado"
@@ -418,6 +512,7 @@ export default function Inicio() {
             onChangeText={setEmpleado}
             autoCapitalize="characters"
           />
+
           <TextInput
             style={s.input}
             placeholder="Contraseña"
@@ -425,13 +520,16 @@ export default function Inicio() {
             onChangeText={setClave}
             secureTextEntry
           />
+
           <Boton titulo="Iniciar sesión" onPress={entrar} />
         </View>
       </View>
     );
   }
 
-  const pendientes = lecturas.filter((l) => l.estadoSync !== "enviado").length;
+  const pendientes = lecturas.filter(
+    (item) => item.estadoSync !== "enviado",
+  ).length;
 
   return (
     <View style={s.fondo}>
@@ -447,6 +545,7 @@ export default function Inicio() {
       {mostrarCamara ? (
         <View style={{ flex: 1 }}>
           <CameraView ref={camara} style={{ flex: 1 }} facing="back" />
+
           <View style={{ padding: 15 }}>
             <Boton titulo="📷 Capturar fotografía" onPress={capturar} />
             <Boton
@@ -461,12 +560,15 @@ export default function Inicio() {
           {pantalla === "inicio" && (
             <View style={s.tarjeta}>
               <Text style={s.titulo}>Panel de campo</Text>
+
               <Text style={s.descripcion}>
                 Lecturas registradas: {lecturas.length}
               </Text>
+
               <Text style={s.descripcion}>
                 Pendientes por enviar: {pendientes}
               </Text>
+
               <Boton
                 titulo="Consultar medidor"
                 onPress={() => {
@@ -474,10 +576,12 @@ export default function Inicio() {
                   setPantalla("buscar");
                 }}
               />
+
               <Boton
                 titulo="Ver lecturas"
                 onPress={() => setPantalla("pendientes")}
               />
+
               <Boton titulo="Cerrar sesión" secundario onPress={salir} />
             </View>
           )}
@@ -485,7 +589,11 @@ export default function Inicio() {
           {pantalla === "buscar" && (
             <View style={s.tarjeta}>
               <Text style={s.titulo}>Identificar medidor</Text>
-              <Text style={s.descripcion}>Código de la etiqueta</Text>
+
+              <Text style={s.descripcion}>
+                Ingresa el código de la etiqueta
+              </Text>
+
               <TextInput
                 style={s.input}
                 placeholder="MED-123456"
@@ -494,11 +602,13 @@ export default function Inicio() {
                 autoCapitalize="characters"
                 maxLength={10}
               />
+
               {buscando ? (
                 <ActivityIndicator />
               ) : (
-                <Boton titulo="Buscar" onPress={buscar} />
+                <Boton titulo="Buscar medidor" onPress={buscar} />
               )}
+
               <Boton
                 titulo="Volver"
                 secundario
@@ -511,6 +621,7 @@ export default function Inicio() {
             <>
               <View style={s.tarjeta}>
                 <Text style={s.titulo}>Medidor {codigo}</Text>
+
                 {medidor ? (
                   <>
                     <Text>Dirección: {medidor.direccion}</Text>
@@ -523,26 +634,27 @@ export default function Inicio() {
                   </>
                 ) : (
                   <Text style={s.aviso}>
-                    Sin datos previos. Pendiente de verificar al recuperar
-                    conexión.
+                    Sin datos previos. La lectura quedará pendiente de
+                    verificación hasta recuperar la conexión.
                   </Text>
                 )}
               </View>
 
               <View style={s.tarjeta}>
                 <Text style={s.titulo}>Registrar lectura</Text>
+
                 {(["normal", "inaccesible", "dañado"] as EstadoMedidor[]).map(
-                  (e) => (
+                  (opcion) => (
                     <TouchableOpacity
-                      key={e}
-                      style={[s.opcion, estado === e && s.opcionActiva]}
+                      key={opcion}
+                      style={[s.opcion, estado === opcion && s.opcionActiva]}
                       onPress={() => {
-                        setEstado(e);
+                        setEstado(opcion);
                         setConfirmado(false);
                       }}
                     >
                       <Text>
-                        {estado === e ? "◉" : "○"} {e}
+                        {estado === opcion ? "◉" : "○"} {opcion}
                       </Text>
                     </TouchableOpacity>
                   ),
@@ -583,7 +695,10 @@ export default function Inicio() {
 
                 {anomalo && (
                   <View style={s.advertencia}>
-                    <Text>⚠ Consumo superior al triple del promedio</Text>
+                    <Text>
+                      ⚠ Consumo superior al triple del promedio mensual
+                    </Text>
+
                     <TouchableOpacity
                       onPress={() => setConfirmado(!confirmado)}
                     >
@@ -601,9 +716,14 @@ export default function Inicio() {
                   onPress={tomarFoto}
                   secundario
                 />
+
                 {fotoUri && <Image source={{ uri: fotoUri }} style={s.foto} />}
 
-                <Boton titulo="Guardar lectura" onPress={guardar} />
+                <Boton
+                  titulo={editando ? "Guardar cambios" : "Guardar lectura"}
+                  onPress={guardar}
+                />
+
                 <Boton
                   titulo="Volver al inicio"
                   secundario
@@ -616,38 +736,56 @@ export default function Inicio() {
           {pantalla === "pendientes" && (
             <>
               <Text style={s.titulo}>Historial de lecturas</Text>
-              {lecturas.length === 0 && <Text>No hay registros todavía.</Text>}
+
+              {lecturas.length === 0 && (
+                <Text>Todavía no existen lecturas registradas.</Text>
+              )}
+
               {lecturas.map((item) => (
                 <View key={item.idLocal} style={s.tarjeta}>
                   <Text style={s.titulo}>{item.codigoMedidor}</Text>
+
                   <Text>Mes: {item.mes}</Text>
+
                   <Text>Estado: {item.estadoMedidor}</Text>
+
                   <Text>Lectura: {item.lecturaActual ?? "No registrada"}</Text>
+
+                  <Text>
+                    Consumo:{" "}
+                    {item.consumo === null ? "Pendiente" : `${item.consumo} m³`}
+                  </Text>
+
                   <Text>
                     {item.estadoSync === "enviado"
                       ? "✓ Enviado"
                       : item.pendienteVerificacion
-                        ? "⚠ Pendiente de verificar"
+                        ? "⚠ Pendiente de verificación"
                         : "⏳ Pendiente de envío"}
                   </Text>
+
                   {item.fotoUri && (
                     <Image source={{ uri: item.fotoUri }} style={s.foto} />
                   )}
+
                   {item.estadoSync === "pendiente" && (
                     <Boton
-                      titulo="Editar lectura"
+                      titulo="Editar lectura pendiente"
                       onPress={() => editar(item)}
                     />
                   )}
                 </View>
               ))}
+
               <Boton
-                titulo={sincronizando ? "Sincronizando..." : "Actualizar"}
-                onPress={async () => {
-                  await actualizar();
-                  await sincronizar();
-                }}
+                titulo={
+                  sincronizando
+                    ? "Sincronizando..."
+                    : "Actualizar y sincronizar"
+                }
+                onPress={() => sincronizar(true)}
               />
+
               <Boton
                 titulo="Volver"
                 secundario
@@ -662,8 +800,15 @@ export default function Inicio() {
 }
 
 const s = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: "#EAF7F9" },
-  centro: { flex: 1, justifyContent: "center", alignItems: "center" },
+  fondo: {
+    flex: 1,
+    backgroundColor: "#EAF7F9",
+  },
+  centro: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   login: {
     flex: 1,
     justifyContent: "center",
@@ -676,9 +821,20 @@ const s = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: 18,
   },
-  cabeceraTexto: { color: "#FFFFFF", marginTop: 4, fontSize: 12 },
-  marca: { fontSize: 26, fontWeight: "bold", color: "#25B5BF" },
-  contenido: { padding: 18, paddingBottom: 45 },
+  cabeceraTexto: {
+    color: "#FFFFFF",
+    marginTop: 4,
+    fontSize: 12,
+  },
+  marca: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "#25B5BF",
+  },
+  contenido: {
+    padding: 18,
+    paddingBottom: 45,
+  },
   tarjeta: {
     backgroundColor: "#FFFFFF",
     padding: 18,
@@ -687,8 +843,15 @@ const s = StyleSheet.create({
     gap: 11,
     elevation: 2,
   },
-  titulo: { fontSize: 20, fontWeight: "bold", color: "#102C46" },
-  descripcion: { color: "#56717F", marginVertical: 5 },
+  titulo: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#102C46",
+  },
+  descripcion: {
+    color: "#56717F",
+    marginVertical: 5,
+  },
   input: {
     borderWidth: 1,
     borderColor: "#B8D5DD",
@@ -707,8 +870,13 @@ const s = StyleSheet.create({
   botonSecundario: {
     backgroundColor: "#E4F2F5",
   },
-  textoBoton: { color: "#FFFFFF", fontWeight: "bold" },
-  textoSecundario: { color: "#102C46" },
+  textoBoton: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
+  },
+  textoSecundario: {
+    color: "#102C46",
+  },
   opcion: {
     padding: 12,
     borderRadius: 10,
@@ -719,7 +887,11 @@ const s = StyleSheet.create({
     backgroundColor: "#D5F3F1",
     borderColor: "#087E9D",
   },
-  consumo: { color: "#087E9D", fontWeight: "bold", fontSize: 17 },
+  consumo: {
+    color: "#087E9D",
+    fontWeight: "bold",
+    fontSize: 17,
+  },
   aviso: {
     backgroundColor: "#FFF1D6",
     padding: 12,

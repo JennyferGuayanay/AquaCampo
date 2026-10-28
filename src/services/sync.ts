@@ -14,10 +14,24 @@ import {
 
 import { calcularConsumo, esAnomalo } from "../utils/rules";
 
+export interface ResultadoSync {
+  enviados: number;
+  verificacion: number;
+  conflictos: number;
+  errores: number;
+}
+
 let sincronizando = false;
 
-export async function sincronizarLecturas() {
-  if (sincronizando) return;
+export async function sincronizarLecturas(): Promise<ResultadoSync> {
+  const resultado: ResultadoSync = {
+    enviados: 0,
+    verificacion: 0,
+    conflictos: 0,
+    errores: 0,
+  };
+
+  if (sincronizando) return resultado;
 
   sincronizando = true;
 
@@ -28,71 +42,88 @@ export async function sincronizarLecturas() {
     for (const lectura of lecturas) {
       if (lectura.estadoSync === "enviado") continue;
 
-      if (lectura.pendienteVerificacion) {
-        try {
-          const medidor = await obtenerMedidor(
-            lectura.codigoMedidor
-          );
+      try {
+        if (lectura.pendienteVerificacion) {
+          const medidor =
+            medidores[lectura.codigoMedidor] ??
+            (await obtenerMedidor(lectura.codigoMedidor));
 
-          if (!medidor) continue;
+          if (!medidor) {
+            resultado.verificacion++;
+            continue;
+          }
 
           await guardarMedidor(medidor);
-          medidores[medidor.codigo] = medidor;
 
           if (lectura.lecturaActual !== null) {
             const consumo = calcularConsumo(
               lectura.lecturaActual,
-              medidor.ultimaLectura
+              Number(medidor.ultimaLectura)
             );
 
-            if (consumo < 0) continue;
+            if (consumo < 0) {
+              resultado.verificacion++;
+              continue;
+            }
 
             lectura.consumo = consumo;
 
+            const anomalia = esAnomalo(
+              consumo,
+              Number(medidor.promedioMensual)
+            );
+
             if (
-              esAnomalo(consumo, medidor.promedioMensual) &&
+              anomalia &&
               (!lectura.confirmacionAnomalia || !lectura.fotoUri)
             ) {
+              // No enviar hasta que el técnico revise el registro.
+              resultado.verificacion++;
               continue;
             }
           }
 
           lectura.pendienteVerificacion = false;
           await reemplazarLecturas(lecturas);
-        } catch {
-          continue;
         }
-      }
 
-      try {
-        // Consultar antes de enviar para reducir duplicados
         const remotas = await obtenerLecturasRemotas();
 
-        const existente = remotas.find(
-          r => r.idLocal === lectura.idLocal
+        const mismoId = remotas.some(
+          (r) => r.idLocal === lectura.idLocal
         );
 
-        if (existente) {
+        if (mismoId) {
           lectura.estadoSync = "enviado";
           await reemplazarLecturas(lecturas);
+          resultado.enviados++;
           continue;
         }
 
-        const duplicadoMes = remotas.some(
-          r => r.codigoMedidor === lectura.codigoMedidor &&
-               r.mes === lectura.mes
+        const duplicado = remotas.some(
+          (r) =>
+            r.codigoMedidor === lectura.codigoMedidor &&
+            r.mes === lectura.mes
         );
 
-        if (duplicadoMes) continue;
+        if (duplicado) {
+          resultado.conflictos++;
+          continue;
+        }
 
         await enviarLectura(lectura);
+
         lectura.estadoSync = "enviado";
         await reemplazarLecturas(lecturas);
+        resultado.enviados++;
       } catch {
-        // Se mantiene pendiente para el próximo intento
+        resultado.errores++;
+        // No descartar la lectura si falla la red.
         break;
       }
     }
+
+    return resultado;
   } finally {
     sincronizando = false;
   }
