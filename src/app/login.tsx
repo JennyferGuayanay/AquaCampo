@@ -49,37 +49,82 @@ export default function Login() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={estilos.pagina}
     >
-      <ScrollView contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled">
-        <View style={estilos.marcaCaja}>
-          <Text style={estilos.marca}>AquaCampo</Text>
-          <Text style={estilos.lema}>Lecturas confiables, incluso sin conexión</Text>
-        </View>
-        <AquaIllustration />
-        <View style={estilos.tarjeta}>
-          <Text style={estilos.titulo}>Acceso de campo</Text>
-          <Text style={estilos.descripcion}>
-            Ingresa tus credenciales para continuar con la jornada.
-          </Text>
-          <TextInput
-            autoCapitalize="characters"
-            autoComplete="username"
-            placeholder="Código de empleado"
-            placeholderTextColor={AquaColores.textoSuave}
-            style={estilos.input}
-            value={empleado}
-            onChangeText={setEmpleado}
-          />
-          <TextInput
-            autoComplete="password"
-            placeholder="Contraseña"
-            placeholderTextColor={AquaColores.textoSuave}
-            secureTextEntry
-            style={estilos.input}
-            value={clave}
-            onChangeText={setClave}
-            onSubmitEditing={iniciarSesion}
-          />
-          <AquaButton titulo="Iniciar jornada" onPress={iniciarSesion} cargando={enviando} />
+      <View pointerEvents="none" style={estilos.formasFondo}>
+        <View style={estilos.ondaSuperior} />
+        <View style={estilos.ondaSuperiorClara} />
+        <View style={estilos.circuloDecorativo} />
+        <View style={estilos.ondaInferior} />
+      </View>
+      <ScrollView
+        contentContainerStyle={estilos.contenido}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={estilos.columna}>
+          <View style={estilos.marcaCaja}>
+            <View style={estilos.marcaLinea}>
+              <View style={estilos.simboloMarca}>
+                <View style={estilos.ondaMarcaUno} />
+                <View style={estilos.ondaMarcaDos} />
+              </View>
+              <Text style={estilos.marca}>AquaCampo</Text>
+            </View>
+            <Text style={estilos.lema}>
+              Gestión de lecturas para jornadas de campo
+            </Text>
+          </View>
+
+          <View style={estilos.ilustracionCaja}>
+            <AquaIllustration compacta />
+          </View>
+
+          <View style={estilos.tarjeta}>
+            <View style={estilos.tituloCaja}>
+              <Text style={estilos.sobreTitulo}>ACCESO SEGURO</Text>
+              <Text style={estilos.titulo}>Inicia tu jornada</Text>
+              <Text style={estilos.descripcion}>
+                Tus lecturas permanecerán disponibles aunque pierdas la conexión.
+              </Text>
+            </View>
+
+            <View style={estilos.campo}>
+              <Text style={estilos.etiqueta}>Código de empleado</Text>
+              <TextInput
+                autoCapitalize="characters"
+                autoComplete="username"
+                placeholder="Ej. TEC001"
+                placeholderTextColor={AquaColores.textoSuave}
+                returnKeyType="next"
+                style={estilos.input}
+                value={empleado}
+                onChangeText={setEmpleado}
+              />
+            </View>
+
+            <View style={estilos.campo}>
+              <Text style={estilos.etiqueta}>Contraseña</Text>
+              <TextInput
+                autoComplete="password"
+                placeholder="Ingresa tu contraseña"
+                placeholderTextColor={AquaColores.textoSuave}
+                returnKeyType="done"
+                secureTextEntry
+                style={estilos.input}
+                value={clave}
+                onChangeText={setClave}
+                onSubmitEditing={iniciarSesion}
+              />
+            </View>
+
+            <AquaButton
+              titulo="Ingresar a AquaCampo"
+              onPress={iniciarSesion}
+              cargando={enviando}
+            />
+            <Text style={estilos.pieFormulario}>
+              Acceso exclusivo para personal técnico autorizado
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -87,14 +132,97 @@ export default function Login() {
 }
 
 const estilos = StyleSheet.create({
-  pagina: { flex: 1, backgroundColor: AquaColores.fondo },
-  contenido: { flexGrow: 1, justifyContent: "center", padding: 24, paddingVertical: 45 },
-  marcaCaja: { alignItems: "center" },
-  marca: { color: AquaColores.marino, fontSize: 36, fontWeight: "900", letterSpacing: -1 },
-  lema: { color: AquaColores.turquesaOscuro, textAlign: "center", marginTop: 4, fontWeight: "600" },
-  tarjeta: { backgroundColor: AquaColores.blanco, borderRadius: 26, padding: 22, gap: 14, ...AquaSombra },
-  titulo: { color: AquaColores.marino, fontSize: 24, fontWeight: "900" },
-  descripcion: { color: AquaColores.textoSuave, lineHeight: 21 },
-  input: { borderWidth: 1, borderColor: AquaColores.borde, backgroundColor: "#F8FCFD", borderRadius: 15, padding: 15, color: AquaColores.texto, fontSize: 16 },
-  cargando: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: AquaColores.fondo },
+  pagina: { flex: 1, backgroundColor: AquaColores.blanco },
+  formasFondo: { ...StyleSheet.absoluteFill, overflow: "hidden" },
+  ondaSuperior: {
+    position: "absolute",
+    top: -128,
+    left: -80,
+    width: 470,
+    height: 235,
+    borderRadius: 180,
+    backgroundColor: AquaColores.celeste,
+    transform: [{ rotate: "-8deg" }],
+  },
+  ondaSuperiorClara: {
+    position: "absolute",
+    top: -110,
+    right: -160,
+    width: 400,
+    height: 230,
+    borderRadius: 180,
+    backgroundColor: AquaColores.celesteSuave,
+    transform: [{ rotate: "12deg" }],
+  },
+  circuloDecorativo: {
+    position: "absolute",
+    top: 112,
+    right: -24,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 18,
+    borderColor: AquaColores.celesteSuave,
+  },
+  ondaInferior: {
+    position: "absolute",
+    bottom: -160,
+    left: -90,
+    width: 520,
+    height: 220,
+    borderRadius: 180,
+    backgroundColor: AquaColores.fondoProfundo,
+    transform: [{ rotate: "5deg" }],
+  },
+  contenido: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    paddingTop: 48,
+    paddingBottom: 30,
+  },
+  columna: { width: "100%", maxWidth: 420, alignSelf: "center" },
+  marcaCaja: { alignItems: "center", paddingHorizontal: 12 },
+  marcaLinea: { flexDirection: "row", alignItems: "center", gap: 10 },
+  simboloMarca: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: AquaColores.marino,
+    justifyContent: "center",
+    paddingHorizontal: 7,
+    gap: 4,
+  },
+  ondaMarcaUno: { height: 3, borderRadius: 2, backgroundColor: AquaColores.celeste },
+  ondaMarcaDos: { width: "72%", height: 3, borderRadius: 2, backgroundColor: AquaColores.turquesa, alignSelf: "flex-end" },
+  marca: { color: AquaColores.marino, fontSize: 32, fontWeight: "900", letterSpacing: -1 },
+  lema: { color: AquaColores.textoSuave, textAlign: "center", marginTop: 7, lineHeight: 20, fontWeight: "600" },
+  ilustracionCaja: { height: 154, justifyContent: "center", marginVertical: 2 },
+  tarjeta: {
+    backgroundColor: AquaColores.blanco,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: AquaColores.linea,
+    padding: 22,
+    gap: 16,
+    ...AquaSombra,
+  },
+  tituloCaja: { gap: 5 },
+  sobreTitulo: { color: AquaColores.turquesaOscuro, fontSize: 11, fontWeight: "900", letterSpacing: 1.5 },
+  titulo: { color: AquaColores.marino, fontSize: 25, fontWeight: "900", letterSpacing: -0.4 },
+  descripcion: { color: AquaColores.textoSuave, lineHeight: 20 },
+  campo: { gap: 7 },
+  etiqueta: { color: AquaColores.texto, fontSize: 13, fontWeight: "800" },
+  input: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: AquaColores.borde,
+    backgroundColor: AquaColores.celesteSuave,
+    borderRadius: 15,
+    paddingHorizontal: 15,
+    color: AquaColores.texto,
+    fontSize: 16,
+  },
+  pieFormulario: { color: AquaColores.textoSuave, fontSize: 11, textAlign: "center", lineHeight: 16 },
+  cargando: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: AquaColores.blanco },
 });

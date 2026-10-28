@@ -85,15 +85,20 @@ const estilos = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 15,
+    alignItems: "flex-start",
   },
   tituloDato: {
     color: AquaColores.textoSuave,
     fontSize: 13,
+    width: 108,
+    flexShrink: 0,
   },
   valor: {
     color: AquaColores.texto,
     fontWeight: "700",
     flex: 1,
+    flexShrink: 1,
     textAlign: "right",
+    lineHeight: 19,
   },
 });

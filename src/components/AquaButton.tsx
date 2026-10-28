@@ -83,6 +83,9 @@ const estilos = StyleSheet.create({
     color: AquaColores.blanco,
     fontWeight: "800",
     fontSize: 16,
+    flexShrink: 1,
+    textAlign: "center",
+    lineHeight: 20,
   },
   textoSecundario: {
     color: AquaColores.marino,
