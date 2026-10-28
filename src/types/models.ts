@@ -1,9 +1,5 @@
 
-export type EstadoMedidor =
-  | "normal"
-  | "inaccesible"
-  | "dañado";
-
+export type EstadoMedidor = "normal" | "inaccesible" | "dañado";
 export type EstadoSync = "pendiente" | "enviado";
 
 export interface Medidor {
@@ -33,4 +29,14 @@ export interface Lectura {
   fotoUri: string | null;
   estadoSync: EstadoSync;
   pendienteVerificacion: boolean;
+}
+
+export interface Borrador {
+  codigo: string;
+  estado: EstadoMedidor;
+  lectura: string;
+  motivo: string;
+  descripcion: string;
+  confirmado: boolean;
+  fotoUri: string | null;
 }

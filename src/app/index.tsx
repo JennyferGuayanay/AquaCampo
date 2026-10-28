@@ -1,283 +1,396 @@
-
-import React, { useEffect, useState } from "react";
-
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  AppState,
+  Image,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  StyleSheet,
+  View,
 } from "react-native";
 
-import type {
-  Medidor,
-  EstadoMedidor,
-  Lectura
-} from "../types/models";
-
+import { useConnectivity } from "../hooks/useConnectivity";
 import { obtenerMedidor } from "../services/api";
-
+import { sincronizarLecturas } from "../services/sync";
 import {
-  guardarSesion,
-  obtenerSesion,
+  borrarBorrador,
   cerrarSesion,
+  guardarBorrador,
+  guardarLectura,
   guardarMedidor,
+  guardarSesion,
+  obtenerBorrador,
+  obtenerLecturas,
   obtenerMedidores,
-  guardarLectura
+  obtenerSesion,
 } from "../storage/local";
-
+import { conservarFoto } from "../storage/photoStorage";
+import type {
+  Borrador,
+  EstadoMedidor,
+  Lectura,
+  Medidor,
+} from "../types/models";
 import {
+  calcularConsumo,
+  esAnomalo,
   validarCodigo,
   validarRegistro,
-  calcularConsumo,
-  esAnomalo
 } from "../utils/rules";
 
-export default function Inicio() {
+type Pantalla = "inicio" | "buscar" | "registro" | "pendientes";
 
+export default function Inicio() {
+  const conectado = useConnectivity();
+  const [permiso, solicitarPermiso] = useCameraPermissions();
+  const camara = useRef<CameraView>(null);
+
+  const [cargando, setCargando] = useState(true);
   const [sesion, setSesion] = useState<string | null>(null);
   const [empleado, setEmpleado] = useState("");
   const [clave, setClave] = useState("");
-  const [cargando, setCargando] = useState(true);
-
+  const [pantalla, setPantalla] = useState<Pantalla>("inicio");
   const [codigo, setCodigo] = useState("");
   const [medidor, setMedidor] = useState<Medidor | null>(null);
   const [buscando, setBuscando] = useState(false);
-
-  const [estado, setEstado] =
-    useState<EstadoMedidor>("normal");
-
+  const [estado, setEstado] = useState<EstadoMedidor>("normal");
   const [lectura, setLectura] = useState("");
   const [motivo, setMotivo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [confirmado, setConfirmado] = useState(false);
+  const [fotoUri, setFotoUri] = useState<string | null>(null);
+  const [mostrarCamara, setMostrarCamara] = useState(false);
+  const [lecturas, setLecturas] = useState<Lectura[]>([]);
+  const [editando, setEditando] = useState<string | null>(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [listo, setListo] = useState(false);
 
-  // Recuperar sesion al abrir la aplicacion
-  useEffect(() => {
-    obtenerSesion()
-      .then(setSesion)
-      .finally(() => setCargando(false));
+  const actualizar = useCallback(async () => {
+    setLecturas(await obtenerLecturas());
   }, []);
 
-  // Iniciar sesion con datos quemados
-  async function iniciarSesion() {
-    if (empleado !== "TEC001" || clave !== "123456") {
-      Alert.alert("Error", "Credenciales incorrectas.");
+  const sincronizar = useCallback(async () => {
+    if (!conectado) return;
+    setSincronizando(true);
+    try {
+      await sincronizarLecturas();
+    } catch {
+      // La cola se conserva para un intento posterior.
+    } finally {
+      await actualizar();
+      setSincronizando(false);
+    }
+  }, [conectado, actualizar]);
+
+  useEffect(() => {
+    async function iniciar() {
+      try {
+        const usuario = await obtenerSesion();
+        setSesion(usuario);
+        await actualizar();
+        const borrador = await obtenerBorrador();
+        if (usuario && borrador) {
+          Alert.alert(
+            "Registro incompleto",
+            "¿Deseas continuar el registro anterior?",
+            [
+              {
+                text: "Descartar",
+                style: "destructive",
+                onPress: async () => {
+                  await borrarBorrador();
+                  setListo(true);
+                },
+              },
+              {
+                text: "Continuar",
+                onPress: () => {
+                  setCodigo(borrador.codigo);
+                  setEstado(borrador.estado);
+                  setLectura(borrador.lectura);
+                  setMotivo(borrador.motivo);
+                  setDescripcion(borrador.descripcion);
+                  setConfirmado(borrador.confirmado);
+                  setFotoUri(borrador.fotoUri);
+                  setPantalla("registro");
+                  setListo(true);
+                },
+              },
+            ],
+          );
+        } else {
+          setListo(true);
+        }
+      } finally {
+        setCargando(false);
+      }
+    }
+    iniciar();
+  }, [actualizar]);
+
+  useEffect(() => {
+    if (!sesion || !listo || pantalla !== "registro") return;
+    const borrador: Borrador = {
+      codigo,
+      estado,
+      lectura,
+      motivo,
+      descripcion,
+      confirmado,
+      fotoUri,
+    };
+    guardarBorrador(borrador).catch(() => {});
+  }, [
+    sesion,
+    listo,
+    pantalla,
+    codigo,
+    estado,
+    lectura,
+    motivo,
+    descripcion,
+    confirmado,
+    fotoUri,
+  ]);
+
+  useEffect(() => {
+    if (!conectado || !sesion) return;
+    sincronizar();
+    const intervalo = setInterval(sincronizar, 12000);
+    const sub = AppState.addEventListener("change", (valor) => {
+      if (valor === "active") sincronizar();
+    });
+    return () => {
+      clearInterval(intervalo);
+      sub.remove();
+    };
+  }, [conectado, sesion, sincronizar]);
+
+  async function entrar() {
+    if (empleado.trim().toUpperCase() !== "TEC001" || clave !== "123456") {
+      Alert.alert("Acceso denegado", "Código o clave incorrectos.");
       return;
     }
 
-    await guardarSesion(empleado);
-    setSesion(empleado);
+    await guardarSesion("TEC001");
+    setSesion("TEC001");
+    setPantalla("inicio");
   }
 
-  // Cerrar sesion
   async function salir() {
     await cerrarSesion();
     setSesion(null);
-    setMedidor(null);
-    setCodigo("");
+    setPantalla("inicio");
   }
 
-  // Consultar medidor
-  async function buscarMedidor() {
-    setMedidor(null);
+  async function buscar() {
+    const valor = codigo.trim().toUpperCase();
+    setCodigo(valor);
 
-    if (!validarCodigo(codigo)) {
-      Alert.alert(
-        "Codigo incorrecto",
-        "Debe tener el formato MED-123456."
-      );
+    if (!validarCodigo(valor)) {
+      Alert.alert("Código incorrecto", "Formato requerido: MED-123456");
       return;
     }
 
     setBuscando(true);
-
     try {
-      const guardados = await obtenerMedidores();
-
-      // Buscar primero en cache
-      if (guardados[codigo]) {
-        setMedidor(guardados[codigo]);
+      const cache = await obtenerMedidores();
+      if (cache[valor]) {
+        setMedidor(cache[valor]);
+        setPantalla("registro");
         return;
       }
 
-      // Consultar MockAPI
-      const encontrado = await obtenerMedidor(codigo);
+      if (!conectado) {
+        setMedidor(null);
+        setPantalla("registro");
+        return;
+      }
 
+      const encontrado = await obtenerMedidor(valor);
       if (!encontrado) {
-        Alert.alert(
-          "No encontrado",
-          "El medidor no existe."
-        );
+        Alert.alert("No encontrado", "No existe ese medidor.");
         return;
       }
-
       await guardarMedidor(encontrado);
       setMedidor(encontrado);
-
+      setPantalla("registro");
     } catch {
+      setMedidor(null);
       Alert.alert(
-        "Sin conexion",
-        "No se pudo consultar el medidor."
+        "Consulta no disponible",
+        "Puedes continuar sin datos previos. Se verificará después.",
       );
+      setPantalla("registro");
     } finally {
       setBuscando(false);
     }
   }
 
-  const numeroLectura = Number(lectura);
+  async function tomarFoto() {
+    if (!permiso?.granted) {
+      const respuesta = await solicitarPermiso();
+      if (!respuesta.granted) {
+        Alert.alert(
+          "Permiso de cámara",
+          "Necesitamos la cámara para respaldar medidores dañados o consumos anómalos. Puedes continuar sin foto cuando sea opcional.",
+        );
+        return;
+      }
+    }
+    setMostrarCamara(true);
+  }
 
-  // Calcular consumo
+  async function capturar() {
+    try {
+      const resultado = await camara.current?.takePictureAsync({
+        quality: 0.65,
+      });
+      if (!resultado?.uri) return;
+      const guardada = await conservarFoto(resultado.uri);
+      setFotoUri(guardada);
+      setMostrarCamara(false);
+    } catch {
+      Alert.alert("Error", "No se pudo guardar la fotografía.");
+    }
+  }
+
+  function limpiar() {
+    setCodigo("");
+    setMedidor(null);
+    setEstado("normal");
+    setLectura("");
+    setMotivo("");
+    setDescripcion("");
+    setConfirmado(false);
+    setFotoUri(null);
+    setEditando(null);
+  }
+
+  const lecturaValida =
+    /^\d+$/.test(lectura.trim()) && Number.isSafeInteger(Number(lectura));
+
   const consumo =
-    medidor &&
-    lectura.trim() !== "" &&
-    /^\d+$/.test(lectura.trim()) &&
-    Number.isSafeInteger(numeroLectura)
-      ? calcularConsumo(
-          numeroLectura,
-          medidor.ultimaLectura
-        )
+    medidor && lecturaValida && estado !== "inaccesible"
+      ? calcularConsumo(Number(lectura), Number(medidor.ultimaLectura))
       : null;
 
-  // Detectar consumo anomalo
   const anomalo =
-    medidor &&
-    consumo !== null &&
-    esAnomalo(
-      consumo,
-      medidor.promedioMensual
-    );
+    consumo !== null && medidor
+      ? esAnomalo(consumo, Number(medidor.promedioMensual))
+      : false;
 
-  // Guardar lectura
-  async function registrar() {
-    if (!medidor || !sesion) return;
+  async function guardar() {
+    if (!sesion || !validarCodigo(codigo)) {
+      Alert.alert("Error", "Código de medidor inválido.");
+      return;
+    }
 
     const error = validarRegistro(
       estado,
       estado === "inaccesible" ? "" : lectura,
       motivo,
-      descripcion
+      descripcion,
     );
-
     if (error) {
-      Alert.alert("Validacion", error);
+      Alert.alert("Validación", error);
       return;
     }
 
-    if (
-      estado !== "inaccesible" &&
-      consumo !== null &&
-      consumo < 0
-    ) {
-      Alert.alert(
-        "Lectura incorrecta",
-        "La lectura no puede ser menor que la anterior."
-      );
+    if (consumo !== null && consumo < 0) {
+      Alert.alert("Lectura inválida", "Es menor que la anterior.");
       return;
     }
 
-    if (
-      estado !== "inaccesible" &&
-      anomalo &&
-      !confirmado
-    ) {
-      Alert.alert(
-        "Consumo anomalo",
-        "Confirme que reviso el medidor."
-      );
+    if (anomalo && !confirmado) {
+      Alert.alert("Advertencia", "Confirma que revisaste el medidor.");
       return;
     }
 
-    // La camara se agregara en la siguiente fase
-    if (
-      estado === "dañado" ||
-      (estado !== "inaccesible" && anomalo)
-    ) {
-      Alert.alert(
-        "Fotografia obligatoria",
-        "Debe agregar una fotografia. Esta funcion se implementara en la fase de camara."
-      );
+    if ((estado === "dañado" || anomalo) && !fotoUri) {
+      Alert.alert("Foto obligatoria", "Toma una fotografía del medidor.");
       return;
     }
 
     const ahora = new Date();
+    const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(
+      2,
+      "0",
+    )}`;
 
-    const mes = `${ahora.getFullYear()}-${String(
-      ahora.getMonth() + 1
-    ).padStart(2, "0")}`;
+    const anterior = lecturas.find((l) => l.idLocal === editando);
 
     const registro: Lectura = {
       idLocal:
+        anterior?.idLocal ??
         `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      codigoMedidor: medidor.codigo,
+      codigoMedidor: codigo,
       tecnico: sesion,
       fecha: ahora.toISOString(),
       mes,
       estadoMedidor: estado,
       lecturaActual:
-        estado === "inaccesible" ||
-        lectura.trim() === ""
-          ? null
-          : numeroLectura,
-      consumo:
-        estado === "inaccesible" ||
-        lectura.trim() === ""
-          ? null
-          : consumo,
-      motivo:
-        estado === "inaccesible" ? motivo : "",
-      descripcionDanio:
-        descripcion,
+        estado === "inaccesible" || !lectura.trim() ? null : Number(lectura),
+      consumo: estado === "inaccesible" ? null : consumo,
+      motivo: estado === "inaccesible" ? motivo : "",
+      descripcionDanio: estado === "dañado" ? descripcion : "",
       confirmacionAnomalia: confirmado,
-      fotoUri: null,
+      fotoUri,
       estadoSync: "pendiente",
-      pendienteVerificacion: false,
+      pendienteVerificacion: !medidor,
     };
 
     try {
       await guardarLectura(registro);
-
-      Alert.alert(
-        "Guardado",
-        "Lectura guardada localmente."
-      );
-
-      setMedidor(null);
-      setCodigo("");
-      setLectura("");
-      setMotivo("");
-      setDescripcion("");
-      setConfirmado(false);
-      setEstado("normal");
-
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        error instanceof Error
-          ? error.message
-          : "No se pudo guardar."
-      );
+      await borrarBorrador();
+      await actualizar();
+      limpiar();
+      setPantalla("pendientes");
+      Alert.alert("Guardado", "Registro conservado en el teléfono.");
+      if (conectado) await sincronizar();
+    } catch (e) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Error al guardar");
     }
   }
 
-  // Boton reutilizable
+  async function editar(item: Lectura) {
+    if (item.estadoSync === "enviado") {
+      Alert.alert("Bloqueado", "No se puede editar una lectura enviada.");
+      return;
+    }
+    const cache = await obtenerMedidores();
+    setMedidor(cache[item.codigoMedidor] ?? null);
+    setCodigo(item.codigoMedidor);
+    setEstado(item.estadoMedidor);
+    setLectura(item.lecturaActual === null ? "" : String(item.lecturaActual));
+    setMotivo(item.motivo);
+    setDescripcion(item.descripcionDanio);
+    setConfirmado(item.confirmacionAnomalia);
+    setFotoUri(item.fotoUri);
+    setEditando(item.idLocal);
+    setPantalla("registro");
+  }
+
   function Boton({
-    texto,
-    accion
+    titulo,
+    onPress,
+    secundario = false,
   }: {
-    texto: string;
-    accion: () => void;
+    titulo: string;
+    onPress: () => void;
+    secundario?: boolean;
   }) {
     return (
       <TouchableOpacity
-        style={styles.boton}
-        onPress={accion}
+        onPress={onPress}
+        style={[s.boton, secundario && s.botonSecundario]}
       >
-        <Text style={styles.textoBoton}>
-          {texto}
+        <Text style={[s.textoBoton, secundario && s.textoSecundario]}>
+          {titulo}
         </Text>
       </TouchableOpacity>
     );
@@ -285,329 +398,344 @@ export default function Inicio() {
 
   if (cargando) {
     return (
-      <View style={styles.centrado}>
-        <ActivityIndicator
-          size="large"
-          color="#087E9D"
-        />
+      <View style={s.centro}>
+        <ActivityIndicator size="large" />
       </View>
     );
   }
 
-  // Pantalla de login
   if (!sesion) {
     return (
-      <View style={styles.contenedorLogin}>
-        <Text style={styles.logo}>
-          💧 AquaCampo
-        </Text>
-
-        <Text style={styles.subtitulo}>
-          Gestion de lecturas de agua
-        </Text>
-
-        <View style={styles.tarjeta}>
-          <Text style={styles.titulo}>
-            Acceso del tecnico
-          </Text>
-
+      <View style={s.login}>
+        <Text style={s.marca}>💧 AquaCampo</Text>
+        <Text style={s.descripcion}>Gestión inteligente de lecturas</Text>
+        <View style={s.tarjeta}>
+          <Text style={s.titulo}>Acceso del técnico</Text>
           <TextInput
-            style={styles.input}
-            placeholder="Codigo de empleado"
+            style={s.input}
+            placeholder="Código de empleado"
             value={empleado}
             onChangeText={setEmpleado}
             autoCapitalize="characters"
           />
-
           <TextInput
-            style={styles.input}
+            style={s.input}
             placeholder="Contraseña"
             value={clave}
             onChangeText={setClave}
             secureTextEntry
           />
-
-          <Boton
-            texto="Iniciar sesion"
-            accion={iniciarSesion}
-          />
+          <Boton titulo="Iniciar sesión" onPress={entrar} />
         </View>
       </View>
     );
   }
 
-  // Pantalla principal
+  const pendientes = lecturas.filter((l) => l.estadoSync !== "enviado").length;
+
   return (
-    <ScrollView
-      style={styles.fondo}
-      contentContainerStyle={styles.contenido}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.encabezado}>
-        <Text style={styles.logo}>
-          💧 AquaCampo
+    <View style={s.fondo}>
+      <View style={s.cabecera}>
+        <Text style={s.marca}>💧 AquaCampo</Text>
+        <Text style={s.cabeceraTexto}>
+          {conectado ? "● Con conexión" : "● Sin conexión"}
+          {"   "}Pendientes: {pendientes}
         </Text>
-
-        <Text style={styles.textoClaro}>
-          Tecnico: {sesion}
-        </Text>
+        <Text style={s.cabeceraTexto}>Técnico: {sesion}</Text>
       </View>
 
-      <View style={styles.tarjeta}>
-        <Text style={styles.titulo}>
-          Consultar medidor
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="MED-123456"
-          value={codigo}
-          onChangeText={setCodigo}
-          autoCapitalize="characters"
-          maxLength={10}
-        />
-
-        {buscando ? (
-          <ActivityIndicator color="#087E9D" />
-        ) : (
-          <Boton
-            texto="Buscar medidor"
-            accion={buscarMedidor}
-          />
-        )}
-      </View>
-
-      {medidor && (
-        <>
-          <View style={styles.tarjeta}>
-            <Text style={styles.titulo}>
-              Datos del medidor
-            </Text>
-
-            <Text>Codigo: {medidor.codigo}</Text>
-            <Text>Direccion: {medidor.direccion}</Text>
-            <Text>Sector: {medidor.sector}</Text>
-            <Text>Cuenta: {medidor.numeroCuenta}</Text>
-            <Text>Estado: {medidor.estado}</Text>
-            <Text>
-              Ultima lectura: {medidor.ultimaLectura}
-            </Text>
-            <Text>
-              Fecha: {medidor.fechaUltimaLectura}
-            </Text>
-            <Text>
-              Promedio mensual: {medidor.promedioMensual} m³
-            </Text>
-          </View>
-
-          <View style={styles.tarjeta}>
-            <Text style={styles.titulo}>
-              Registrar lectura
-            </Text>
-
-            <Text style={styles.etiqueta}>
-              Estado del medidor
-            </Text>
-
-            {(
-              [
-                "normal",
-                "inaccesible",
-                "dañado"
-              ] as EstadoMedidor[]
-            ).map(opcion => (
-              <TouchableOpacity
-                key={opcion}
-                style={[
-                  styles.opcion,
-                  estado === opcion &&
-                    styles.opcionActiva
-                ]}
-                onPress={() => {
-                  setEstado(opcion);
-                  setConfirmado(false);
-                }}
-              >
-                <Text>
-                  {estado === opcion ? "●" : "○"} {opcion}
-                </Text>
-              </TouchableOpacity>
-            ))}
-
-            {estado !== "inaccesible" && (
-              <TextInput
-                style={styles.input}
-                placeholder="Lectura actual"
-                value={lectura}
-                onChangeText={setLectura}
-                keyboardType="numeric"
-              />
-            )}
-
-            {estado === "inaccesible" && (
-              <TextInput
-                style={styles.input}
-                placeholder="Motivo de inaccesibilidad"
-                value={motivo}
-                onChangeText={setMotivo}
-              />
-            )}
-
-            {estado === "dañado" && (
-              <TextInput
-                style={styles.input}
-                placeholder="Descripcion del daño"
-                value={descripcion}
-                onChangeText={setDescripcion}
-                multiline
-              />
-            )}
-
-            {estado !== "inaccesible" &&
-              consumo !== null && (
-                <Text style={styles.consumo}>
-                  Consumo calculado: {consumo} m³
-                </Text>
-              )}
-
-            {estado !== "inaccesible" &&
-              anomalo && (
-                <View style={styles.advertencia}>
-                  <Text style={styles.textoAdvertencia}>
-                    ⚠ Consumo superior al triple
-                    del promedio mensual.
-                  </Text>
-
-                  <TouchableOpacity
-                    onPress={() =>
-                      setConfirmado(!confirmado)
-                    }
-                  >
-                    <Text>
-                      {confirmado ? "☑" : "☐"} Confirmo
-                      que revise el medidor
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
+      {mostrarCamara ? (
+        <View style={{ flex: 1 }}>
+          <CameraView ref={camara} style={{ flex: 1 }} facing="back" />
+          <View style={{ padding: 15 }}>
+            <Boton titulo="📷 Capturar fotografía" onPress={capturar} />
             <Boton
-              texto="Guardar lectura"
-              accion={registrar}
+              titulo="Cancelar"
+              secundario
+              onPress={() => setMostrarCamara(false)}
             />
           </View>
-        </>
-      )}
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={s.contenido}>
+          {pantalla === "inicio" && (
+            <View style={s.tarjeta}>
+              <Text style={s.titulo}>Panel de campo</Text>
+              <Text style={s.descripcion}>
+                Lecturas registradas: {lecturas.length}
+              </Text>
+              <Text style={s.descripcion}>
+                Pendientes por enviar: {pendientes}
+              </Text>
+              <Boton
+                titulo="Consultar medidor"
+                onPress={() => {
+                  limpiar();
+                  setPantalla("buscar");
+                }}
+              />
+              <Boton
+                titulo="Ver lecturas"
+                onPress={() => setPantalla("pendientes")}
+              />
+              <Boton titulo="Cerrar sesión" secundario onPress={salir} />
+            </View>
+          )}
 
-      <Boton
-        texto="Cerrar sesion"
-        accion={salir}
-      />
-    </ScrollView>
+          {pantalla === "buscar" && (
+            <View style={s.tarjeta}>
+              <Text style={s.titulo}>Identificar medidor</Text>
+              <Text style={s.descripcion}>Código de la etiqueta</Text>
+              <TextInput
+                style={s.input}
+                placeholder="MED-123456"
+                value={codigo}
+                onChangeText={setCodigo}
+                autoCapitalize="characters"
+                maxLength={10}
+              />
+              {buscando ? (
+                <ActivityIndicator />
+              ) : (
+                <Boton titulo="Buscar" onPress={buscar} />
+              )}
+              <Boton
+                titulo="Volver"
+                secundario
+                onPress={() => setPantalla("inicio")}
+              />
+            </View>
+          )}
+
+          {pantalla === "registro" && (
+            <>
+              <View style={s.tarjeta}>
+                <Text style={s.titulo}>Medidor {codigo}</Text>
+                {medidor ? (
+                  <>
+                    <Text>Dirección: {medidor.direccion}</Text>
+                    <Text>Sector: {medidor.sector}</Text>
+                    <Text>Cuenta: {medidor.numeroCuenta}</Text>
+                    <Text>Estado: {medidor.estado}</Text>
+                    <Text>Anterior: {medidor.ultimaLectura} m³</Text>
+                    <Text>Fecha: {medidor.fechaUltimaLectura}</Text>
+                    <Text>Promedio: {medidor.promedioMensual} m³</Text>
+                  </>
+                ) : (
+                  <Text style={s.aviso}>
+                    Sin datos previos. Pendiente de verificar al recuperar
+                    conexión.
+                  </Text>
+                )}
+              </View>
+
+              <View style={s.tarjeta}>
+                <Text style={s.titulo}>Registrar lectura</Text>
+                {(["normal", "inaccesible", "dañado"] as EstadoMedidor[]).map(
+                  (e) => (
+                    <TouchableOpacity
+                      key={e}
+                      style={[s.opcion, estado === e && s.opcionActiva]}
+                      onPress={() => {
+                        setEstado(e);
+                        setConfirmado(false);
+                      }}
+                    >
+                      <Text>
+                        {estado === e ? "◉" : "○"} {e}
+                      </Text>
+                    </TouchableOpacity>
+                  ),
+                )}
+
+                {estado !== "inaccesible" && (
+                  <TextInput
+                    style={s.input}
+                    placeholder="Lectura actual en m³"
+                    keyboardType="numeric"
+                    value={lectura}
+                    onChangeText={setLectura}
+                  />
+                )}
+
+                {estado === "inaccesible" && (
+                  <TextInput
+                    style={s.input}
+                    placeholder="Motivo obligatorio"
+                    value={motivo}
+                    onChangeText={setMotivo}
+                  />
+                )}
+
+                {estado === "dañado" && (
+                  <TextInput
+                    style={s.input}
+                    placeholder="Descripción obligatoria del daño"
+                    value={descripcion}
+                    onChangeText={setDescripcion}
+                    multiline
+                  />
+                )}
+
+                {consumo !== null && (
+                  <Text style={s.consumo}>Consumo: {consumo} m³</Text>
+                )}
+
+                {anomalo && (
+                  <View style={s.advertencia}>
+                    <Text>⚠ Consumo superior al triple del promedio</Text>
+                    <TouchableOpacity
+                      onPress={() => setConfirmado(!confirmado)}
+                    >
+                      <Text>
+                        {confirmado ? "☑" : "☐"} Confirmo que revisé el medidor
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <Boton
+                  titulo={
+                    fotoUri ? "📷 Cambiar fotografía" : "📷 Tomar fotografía"
+                  }
+                  onPress={tomarFoto}
+                  secundario
+                />
+                {fotoUri && <Image source={{ uri: fotoUri }} style={s.foto} />}
+
+                <Boton titulo="Guardar lectura" onPress={guardar} />
+                <Boton
+                  titulo="Volver al inicio"
+                  secundario
+                  onPress={() => setPantalla("inicio")}
+                />
+              </View>
+            </>
+          )}
+
+          {pantalla === "pendientes" && (
+            <>
+              <Text style={s.titulo}>Historial de lecturas</Text>
+              {lecturas.length === 0 && <Text>No hay registros todavía.</Text>}
+              {lecturas.map((item) => (
+                <View key={item.idLocal} style={s.tarjeta}>
+                  <Text style={s.titulo}>{item.codigoMedidor}</Text>
+                  <Text>Mes: {item.mes}</Text>
+                  <Text>Estado: {item.estadoMedidor}</Text>
+                  <Text>Lectura: {item.lecturaActual ?? "No registrada"}</Text>
+                  <Text>
+                    {item.estadoSync === "enviado"
+                      ? "✓ Enviado"
+                      : item.pendienteVerificacion
+                        ? "⚠ Pendiente de verificar"
+                        : "⏳ Pendiente de envío"}
+                  </Text>
+                  {item.fotoUri && (
+                    <Image source={{ uri: item.fotoUri }} style={s.foto} />
+                  )}
+                  {item.estadoSync === "pendiente" && (
+                    <Boton
+                      titulo="Editar lectura"
+                      onPress={() => editar(item)}
+                    />
+                  )}
+                </View>
+              ))}
+              <Boton
+                titulo={sincronizando ? "Sincronizando..." : "Actualizar"}
+                onPress={async () => {
+                  await actualizar();
+                  await sincronizar();
+                }}
+              />
+              <Boton
+                titulo="Volver"
+                secundario
+                onPress={() => setPantalla("inicio")}
+              />
+            </>
+          )}
+        </ScrollView>
+      )}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  fondo: {
+const s = StyleSheet.create({
+  fondo: { flex: 1, backgroundColor: "#EAF7F9" },
+  centro: { flex: 1, justifyContent: "center", alignItems: "center" },
+  login: {
     flex: 1,
+    justifyContent: "center",
     backgroundColor: "#EAF7F9",
-  },
-  contenido: {
-    padding: 18,
-    paddingBottom: 50,
-  },
-  centrado: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  contenedorLogin: {
-    flex: 1,
-    justifyContent: "center",
     padding: 24,
-    backgroundColor: "#EAF7F9",
   },
-  encabezado: {
+  cabecera: {
     backgroundColor: "#102C46",
-    borderRadius: 18,
-    padding: 24,
-    marginBottom: 18,
+    paddingHorizontal: 20,
+    paddingTop: 48,
+    paddingBottom: 18,
   },
-  logo: {
-    fontSize: 27,
-    fontWeight: "bold",
-    color: "#25B5BF",
-    marginBottom: 8,
-  },
-  subtitulo: {
-    color: "#526A78",
-    marginBottom: 28,
-    textAlign: "center",
-  },
-  textoClaro: {
-    color: "#FFFFFF",
-  },
+  cabeceraTexto: { color: "#FFFFFF", marginTop: 4, fontSize: 12 },
+  marca: { fontSize: 26, fontWeight: "bold", color: "#25B5BF" },
+  contenido: { padding: 18, paddingBottom: 45 },
   tarjeta: {
     backgroundColor: "#FFFFFF",
+    padding: 18,
     borderRadius: 18,
-    padding: 20,
-    marginBottom: 18,
-    elevation: 3,
-    gap: 12,
+    marginBottom: 16,
+    gap: 11,
+    elevation: 2,
   },
-  titulo: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#102C46",
-    marginBottom: 6,
-  },
-  etiqueta: {
-    color: "#102C46",
-    fontWeight: "600",
-  },
+  titulo: { fontSize: 20, fontWeight: "bold", color: "#102C46" },
+  descripcion: { color: "#56717F", marginVertical: 5 },
   input: {
     borderWidth: 1,
-    borderColor: "#C7DDE2",
-    borderRadius: 10,
-    padding: 13,
+    borderColor: "#B8D5DD",
     backgroundColor: "#F7FBFC",
+    padding: 13,
+    borderRadius: 10,
     color: "#102C46",
   },
   boton: {
     backgroundColor: "#087E9D",
-    padding: 15,
+    padding: 14,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 6,
+    marginTop: 5,
   },
-  textoBoton: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 15,
+  botonSecundario: {
+    backgroundColor: "#E4F2F5",
   },
+  textoBoton: { color: "#FFFFFF", fontWeight: "bold" },
+  textoSecundario: { color: "#102C46" },
   opcion: {
-    borderWidth: 1,
-    borderColor: "#C7DDE2",
-    borderRadius: 10,
     padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#C8DEE3",
   },
   opcionActiva: {
-    backgroundColor: "#DDF4F4",
+    backgroundColor: "#D5F3F1",
     borderColor: "#087E9D",
   },
-  consumo: {
-    fontWeight: "bold",
-    color: "#087E9D",
-    fontSize: 16,
+  consumo: { color: "#087E9D", fontWeight: "bold", fontSize: 17 },
+  aviso: {
+    backgroundColor: "#FFF1D6",
+    padding: 12,
+    borderRadius: 10,
+    color: "#895A11",
   },
   advertencia: {
     backgroundColor: "#FFF1D6",
-    borderRadius: 12,
-    padding: 14,
+    padding: 12,
+    borderRadius: 10,
     gap: 12,
   },
-  textoAdvertencia: {
-    color: "#9C5A00",
-    fontWeight: "bold",
+  foto: {
+    width: "100%",
+    height: 180,
+    borderRadius: 12,
+    resizeMode: "cover",
   },
 });
