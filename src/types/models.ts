@@ -1,6 +1,24 @@
 
 export type EstadoMedidor = "normal" | "inaccesible" | "dañado";
-export type EstadoSync = "pendiente" | "enviado";
+export type EstadoSync =
+  | "pendiente"
+  | "enviando"
+  | "incierto"
+  | "conflicto"
+  | "enviado";
+
+export type TipoConflicto =
+  | "anomalia_reconexion"
+  | "duplicado_remoto"
+  | "medidor_no_encontrado"
+  | "lectura_invalida"
+  | "respuesta_divergente";
+
+export interface ConflictoLectura {
+  tipo: TipoConflicto;
+  detalle: string;
+  detectadoEn: string;
+}
 
 export interface Medidor {
   id: string;
@@ -29,6 +47,11 @@ export interface Lectura {
   fotoUri: string | null;
   estadoSync: EstadoSync;
   pendienteVerificacion: boolean;
+  conflicto?: ConflictoLectura | null;
+  intentoEn?: string | null;
+  enviadoEn?: string | null;
+  idRemoto?: string | null;
+  actualizadoEn?: string;
 }
 
 export interface Borrador {
@@ -39,4 +62,7 @@ export interface Borrador {
   descripcion: string;
   confirmado: boolean;
   fotoUri: string | null;
+  tecnico?: string;
+  idLocal?: string | null;
+  actualizadoEn?: string;
 }

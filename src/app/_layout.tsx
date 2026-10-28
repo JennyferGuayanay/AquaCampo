@@ -1,22 +1,29 @@
-
 import { Stack } from "expo-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { StatusBar } from "expo-status-bar";
 
-const queryClient = new QueryClient();
+import { AquaColores } from "../constants/aquaTheme";
+import { AquaProvider } from "../context/AquaContext";
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Stack screenOptions={{
-        headerStyle: { backgroundColor: "#102C46" },
-        headerTintColor: "#FFFFFF",
-        contentStyle: { backgroundColor: "#EAF7F9" },
-      }}>
-        <Stack.Screen
-          name="index"
-          options={{ headerShown: false }}
-        />
+    <AquaProvider>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: AquaColores.marino },
+          headerTintColor: AquaColores.blanco,
+          headerTitleStyle: { fontWeight: "800" },
+          headerBackButtonDisplayMode: "minimal",
+          contentStyle: { backgroundColor: AquaColores.fondo },
+        }}
+      >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="medidores" options={{ headerShown: false }} />
+        <Stack.Screen name="detalle" options={{ title: "Detalle del medidor" }} />
+        <Stack.Screen name="registro" options={{ title: "Registrar lectura" }} />
+        <Stack.Screen name="pendientes" options={{ title: "Lecturas y sincronización" }} />
       </Stack>
-    </QueryClientProvider>
+    </AquaProvider>
   );
 }

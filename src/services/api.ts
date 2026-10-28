@@ -4,10 +4,29 @@ import type { Medidor, Lectura } from "../types/models";
 const API_URL =
   "https://6a74ea0632ae11412783217c.mockapi.io/api";
 
+export class ErrorApi extends Error {
+  constructor(
+    mensaje: string,
+    readonly status: number,
+  ) {
+    super(mensaje);
+  }
+}
+
+async function solicitar(url: string, opciones?: RequestInit) {
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), 10000);
+  try {
+    return await fetch(url, { ...opciones, signal: controlador.signal });
+  } finally {
+    clearTimeout(temporizador);
+  }
+}
+
 export async function obtenerMedidor(
   codigo: string
 ): Promise<Medidor | null> {
-  const respuesta = await fetch(
+  const respuesta = await solicitar(
     `${API_URL}/medidores?codigo=${encodeURIComponent(codigo)}`
   );
 
@@ -18,7 +37,7 @@ export async function obtenerMedidor(
 }
 
 export async function obtenerLecturasRemotas(): Promise<Lectura[]> {
-  const respuesta = await fetch(`${API_URL}/lecturas`);
+  const respuesta = await solicitar(`${API_URL}/lecturas`);
 
   if (!respuesta.ok) throw new Error("Error al consultar lecturas");
 
@@ -27,13 +46,20 @@ export async function obtenerLecturasRemotas(): Promise<Lectura[]> {
 
 export async function enviarLectura(
   lectura: Lectura
-): Promise<void> {
-  const respuesta = await fetch(`${API_URL}/lecturas`, {
+): Promise<Lectura & { id?: string }> {
+  const respuesta = await solicitar(`${API_URL}/lecturas`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(lectura),
+    body: JSON.stringify({ ...lectura, estadoSync: "enviado" }),
   });
 
-  if (!respuesta.ok) throw new Error("Error al enviar lectura");
+  if (!respuesta.ok) {
+    throw new ErrorApi(
+      `Error HTTP ${respuesta.status} al enviar lectura`,
+      respuesta.status,
+    );
+  }
+
+  return respuesta.json();
 }
 
