@@ -11,9 +11,15 @@ export const AquaColores = {
   texto: "#183C50",
   textoSuave: "#688391",
   blanco: "#FFFFFF",
+  superficie: "#F8FCFD",
   aviso: "#FFF1D6",
+  avisoTexto: "#714B0A",
   peligro: "#B53A48",
+  peligroSuave: "#FCE5E8",
   exito: "#218767",
+  exitoSuave: "#DCF4EB",
+  info: "#315FA8",
+  infoSuave: "#E4ECFF",
   borde: "#CBE4E9",
   linea: "#DCEDEF",
 };
@@ -30,4 +36,17 @@ export const AquaRadios = {
   pequeno: 12,
   medio: 18,
   grande: 26,
+};
+
+export const AquaEspaciado = {
+  pequeno: 10,
+  medio: 16,
+  grande: 20,
+};
+
+export const AquaTipografia = {
+  etiqueta: 12,
+  cuerpo: 15,
+  subtitulo: 18,
+  titulo: 24,
 };

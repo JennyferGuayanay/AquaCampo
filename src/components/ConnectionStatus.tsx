@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { AquaColores } from "../constants/aquaTheme";
+import { AquaColores, AquaRadios } from "../constants/aquaTheme";
 
 interface ConnectionStatusProps {
   conectado: boolean;
@@ -17,7 +17,17 @@ export function ConnectionStatus({
 }: ConnectionStatusProps) {
   return (
     <View style={estilos.contenedor}>
-      <View style={estilos.estado}>
+      <View
+        accessibilityLabel={sincronizando ? "Sincronizando" : conectado ? "Con conexión" : "Sin conexión"}
+        style={[
+          estilos.estado,
+          sincronizando
+            ? estilos.estadoSincronizando
+            : conectado
+              ? estilos.estadoConectado
+              : estilos.estadoDesconectado,
+        ]}
+      >
         <View
           style={[
             estilos.punto,
@@ -45,14 +55,20 @@ const estilos = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 9,
-    paddingVertical: 9,
+    gap: 8,
+    paddingTop: 10,
   },
   estado: {
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
+    borderRadius: AquaRadios.pequeno,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
+  estadoConectado: { backgroundColor: "rgba(33, 135, 103, 0.22)" },
+  estadoDesconectado: { backgroundColor: "rgba(181, 58, 72, 0.26)" },
+  estadoSincronizando: { backgroundColor: "rgba(70, 185, 220, 0.24)" },
   punto: {
     width: 9,
     height: 9,
@@ -66,19 +82,19 @@ const estilos = StyleSheet.create({
   contador: {
     color: AquaColores.marino,
     backgroundColor: AquaColores.celeste,
-    borderRadius: 10,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    fontSize: 11,
+    borderRadius: AquaRadios.pequeno,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 12,
     fontWeight: "800",
   },
   conflicto: {
-    color: "#764B00",
+    color: AquaColores.avisoTexto,
     backgroundColor: AquaColores.aviso,
-    borderRadius: 10,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    fontSize: 11,
+    borderRadius: AquaRadios.pequeno,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 12,
     fontWeight: "800",
   },
 });

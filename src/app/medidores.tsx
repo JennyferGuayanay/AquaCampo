@@ -12,7 +12,13 @@ import {
 import { AquaButton } from "../components/AquaButton";
 import { AquaIllustration } from "../components/AquaIllustration";
 import { ConnectionStatus } from "../components/ConnectionStatus";
-import { AquaColores, AquaSombra } from "../constants/aquaTheme";
+import {
+  AquaColores,
+  AquaEspaciado,
+  AquaRadios,
+  AquaSombra,
+  AquaTipografia,
+} from "../constants/aquaTheme";
 import { useAqua } from "../context/AquaContext";
 import { borrarBorrador, obtenerBorrador } from "../storage/local";
 import { validarCodigo } from "../utils/rules";
@@ -104,6 +110,25 @@ export default function Medidores() {
         />
       </View>
 
+      <View style={estilos.tarjetaBusqueda}>
+        <View style={estilos.busquedaEncabezado}>
+          <Text style={estilos.sobreTitulo}>ACCIÓN PRINCIPAL</Text>
+          <Text style={estilos.titulo}>Identificar medidor</Text>
+          <Text style={estilos.descripcion}>Ingresa el código impreso en la etiqueta.</Text>
+        </View>
+        <TextInput
+          autoCapitalize="characters"
+          maxLength={10}
+          placeholder="MED-123456"
+          placeholderTextColor={AquaColores.textoSuave}
+          style={estilos.input}
+          value={codigo}
+          onChangeText={setCodigo}
+          onSubmitEditing={consultar}
+        />
+        <AquaButton titulo="Consultar medidor" onPress={consultar} />
+      </View>
+
       <View style={estilos.estadisticas}>
         <View style={estilos.estadistica}><Text style={estilos.numero}>{lecturas.length}</Text><Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={estilos.etiqueta}>Lecturas</Text></View>
         <View style={estilos.estadistica}><Text style={estilos.numero}>{pendientes}</Text><Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={estilos.etiqueta}>Pendientes</Text></View>
@@ -134,23 +159,7 @@ export default function Medidores() {
         </View>
       </View>
 
-      <View style={estilos.tarjetaBusqueda}>
-        <Text style={estilos.titulo}>Identificar medidor</Text>
-        <Text style={estilos.descripcion}>Ingresa el código impreso en la etiqueta.</Text>
-        <TextInput
-          autoCapitalize="characters"
-          maxLength={10}
-          placeholder="MED-123456"
-          placeholderTextColor={AquaColores.textoSuave}
-          style={estilos.input}
-          value={codigo}
-          onChangeText={setCodigo}
-          onSubmitEditing={consultar}
-        />
-        <AquaButton titulo="Consultar medidor" onPress={consultar} />
-      </View>
-
-      <AquaIllustration />
+      <AquaIllustration compacta />
       <AquaButton
         titulo="Ver lecturas y sincronización"
         onPress={() => router.push("/pendientes")}
@@ -164,8 +173,8 @@ export default function Medidores() {
 
 const estilos = StyleSheet.create({
   pagina: { flex: 1, backgroundColor: AquaColores.fondo },
-  contenido: { paddingBottom: 38, gap: 18 },
-  cabecera: { backgroundColor: AquaColores.marino, paddingHorizontal: 20, paddingTop: 50, paddingBottom: 17, flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
+  contenido: { paddingBottom: 38, gap: AquaEspaciado.medio },
+  cabecera: { backgroundColor: AquaColores.marino, paddingHorizontal: AquaEspaciado.grande, paddingTop: 50, paddingBottom: AquaEspaciado.grande, flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
   identidad: { flex: 1, minWidth: 190 },
   saludo: { color: AquaColores.celeste, fontSize: 12, fontWeight: "800", letterSpacing: 1 },
   marca: { color: AquaColores.blanco, fontSize: 29, fontWeight: "900" },
@@ -173,11 +182,11 @@ const estilos = StyleSheet.create({
   casaMini: { width: 44, height: 37, marginRight: 7, marginTop: 8, borderRadius: 5, backgroundColor: AquaColores.blanco, borderWidth: 2, borderColor: AquaColores.celeste, alignItems: "center", justifyContent: "flex-end" },
   techoMini: { position: "absolute", top: -10, width: 31, height: 31, borderRadius: 4, backgroundColor: AquaColores.turquesa, transform: [{ rotate: "45deg" }] },
   puertaMini: { width: 12, height: 21, borderTopLeftRadius: 6, borderTopRightRadius: 6, backgroundColor: AquaColores.marino, zIndex: 1 },
-  estadisticas: { marginHorizontal: 18, marginTop: -4, flexDirection: "row", gap: 9 },
-  estadistica: { flex: 1, minWidth: 0, backgroundColor: AquaColores.blanco, borderRadius: 18, alignItems: "center", paddingHorizontal: 7, paddingVertical: 14, ...AquaSombra },
+  estadisticas: { marginHorizontal: 18, flexDirection: "row", gap: AquaEspaciado.pequeno },
+  estadistica: { flex: 1, minWidth: 0, backgroundColor: AquaColores.blanco, borderRadius: AquaRadios.medio, borderWidth: 1, borderColor: AquaColores.linea, alignItems: "center", paddingHorizontal: 7, paddingVertical: 14 },
   numero: { color: AquaColores.marino, fontSize: 23, fontWeight: "900" },
   etiqueta: { width: "100%", color: AquaColores.textoSuave, textAlign: "center", fontSize: 11, fontWeight: "700" },
-  avanceTarjeta: { marginHorizontal: 18, backgroundColor: AquaColores.blanco, borderRadius: 24, padding: 18, flexDirection: "row", alignItems: "center", gap: 17, ...AquaSombra },
+  avanceTarjeta: { marginHorizontal: 18, backgroundColor: AquaColores.blanco, borderRadius: AquaRadios.grande, borderWidth: 1, borderColor: AquaColores.linea, padding: 18, flexDirection: "row", alignItems: "center", gap: 17 },
   medidorAvance: { width: 92, height: 60, overflow: "hidden", justifyContent: "flex-end" },
   arcoAvance: { width: 92, height: 92, borderRadius: 46, borderWidth: 9, borderColor: AquaColores.turquesa, backgroundColor: AquaColores.celesteSuave, alignItems: "center", paddingTop: 18 },
   porcentaje: { color: AquaColores.marino, fontSize: 20, fontWeight: "900" },
@@ -187,9 +196,11 @@ const estilos = StyleSheet.create({
   avanceTitulo: { color: AquaColores.marino, fontSize: 18, fontWeight: "900" },
   barraFondo: { height: 7, borderRadius: 4, marginTop: 7, backgroundColor: AquaColores.celesteSuave, overflow: "hidden" },
   barraActiva: { height: "100%", borderRadius: 4, backgroundColor: AquaColores.turquesa },
-  tarjetaBusqueda: { marginHorizontal: 18, backgroundColor: AquaColores.blanco, borderRadius: 24, padding: 20, gap: 13, ...AquaSombra },
-  titulo: { color: AquaColores.marino, fontSize: 22, fontWeight: "900" },
-  descripcion: { color: AquaColores.textoSuave },
-  input: { borderWidth: 1, borderColor: AquaColores.borde, backgroundColor: "#F8FCFD", borderRadius: 15, padding: 15, color: AquaColores.texto, fontSize: 18, fontWeight: "800", letterSpacing: 1 },
+  tarjetaBusqueda: { marginHorizontal: 18, marginTop: -8, backgroundColor: AquaColores.blanco, borderRadius: AquaRadios.grande, borderWidth: 1, borderColor: AquaColores.borde, borderLeftWidth: 5, borderLeftColor: AquaColores.turquesa, padding: AquaEspaciado.grande, gap: 13, ...AquaSombra },
+  busquedaEncabezado: { gap: 4 },
+  sobreTitulo: { color: AquaColores.turquesaOscuro, fontSize: AquaTipografia.etiqueta, fontWeight: "900", letterSpacing: 1.2 },
+  titulo: { color: AquaColores.marino, fontSize: AquaTipografia.titulo, fontWeight: "900", letterSpacing: -0.3 },
+  descripcion: { color: AquaColores.textoSuave, fontSize: AquaTipografia.cuerpo, lineHeight: 21 },
+  input: { minHeight: 54, borderWidth: 1, borderColor: AquaColores.borde, backgroundColor: AquaColores.superficie, borderRadius: 15, paddingHorizontal: 15, color: AquaColores.texto, fontSize: 18, fontWeight: "800", letterSpacing: 1 },
   botonAncho: { marginHorizontal: 18 },
 });
