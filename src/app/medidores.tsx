@@ -1,26 +1,31 @@
+
 import { Redirect, router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+
 import {
+  ActivityIndicator,
   Alert,
+  Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+} from "react-native-reanimated";
+
+import { auth } from "../config/firebase";
 import { AquaButton } from "../components/AquaButton";
 import { AquaIllustration } from "../components/AquaIllustration";
 import { ConnectionStatus } from "../components/ConnectionStatus";
-import {
-  AquaColores,
-  AquaEspaciado,
-  AquaRadios,
-  AquaSombra,
-  AquaTipografia,
-} from "../constants/aquaTheme";
 import { useAqua } from "../context/AquaContext";
-import { borrarBorrador, obtenerBorrador } from "../storage/local";
+import {
+  borrarBorrador,
+  obtenerBorrador,
+} from "../storage/local";
 import { validarCodigo } from "../utils/rules";
 
 export default function Medidores() {
@@ -32,175 +37,314 @@ export default function Medidores() {
     sincronizando,
     salir,
   } = useAqua();
+
   const [codigo, setCodigo] = useState("");
   const borradorRevisado = useRef(false);
 
-  const pendientes = lecturas.filter((item) => item.estadoSync !== "enviado").length;
-  const conflictos = lecturas.filter((item) => item.estadoSync === "conflicto").length;
-  const enviados = lecturas.filter((item) => item.estadoSync === "enviado").length;
+  const usuario = auth.currentUser;
+
+  const autorizado =
+    !!sesion &&
+    !!usuario &&
+    usuario.emailVerified &&
+    sesion === usuario.uid;
+
+  const nombre =
+    usuario?.displayName?.trim() || "Técnico";
+
+  const pendientes = lecturas.filter(
+    (item) => item.estadoSync !== "enviado"
+  ).length;
+
+  const conflictos = lecturas.filter(
+    (item) => item.estadoSync === "conflicto"
+  ).length;
+
+  const enviados = lecturas.filter(
+    (item) => item.estadoSync === "enviado"
+  ).length;
+
   const porcentajeEnviado = lecturas.length
     ? Math.round((enviados / lecturas.length) * 100)
     : 0;
 
+  // Recuperar borradores de lecturas sin terminar.
   useEffect(() => {
-    if (!sesion || borradorRevisado.current) return;
-    borradorRevisado.current = true;
-    obtenerBorrador(sesion).then((borrador) => {
-      if (!borrador) return;
-      Alert.alert(
-        "Registro sin terminar",
-        "Encontramos un borrador de tu última jornada. Puedes continuarlo o descartarlo.",
-        [
-          {
-            text: "Descartar",
-            style: "destructive",
-            onPress: () => void borrarBorrador(sesion),
-          },
-          {
-            text: "Continuar",
-            onPress: () =>
-              router.push({
-                pathname: "/registro",
-                params: {
-                  codigo: borrador.codigo,
-                  idLocal: borrador.idLocal ?? undefined,
-                  borrador: "1",
-                },
-              }),
-          },
-        ],
-      );
-    });
-  }, [sesion]);
+    if (!autorizado || !sesion || borradorRevisado.current) {
+      return;
+    }
 
-  if (!cargando && !sesion) return <Redirect href="/login" />;
+    borradorRevisado.current = true;
+
+    obtenerBorrador(sesion)
+      .then((borrador) => {
+        if (!borrador) return;
+
+        Alert.alert(
+          "Registro sin terminar",
+          "Encontramos un borrador de tu última jornada. Puedes continuarlo o descartarlo.",
+          [
+            {
+              text: "Descartar",
+              style: "destructive",
+              onPress: () => {
+                void borrarBorrador(sesion);
+              },
+            },
+            {
+              text: "Continuar",
+              onPress: () =>
+                router.push({
+                  pathname: "/registro",
+                  params: {
+                    codigo: borrador.codigo,
+                    idLocal: borrador.idLocal ?? undefined,
+                    borrador: "1",
+                  },
+                }),
+            },
+          ]
+        );
+      })
+      .catch((error) => {
+        console.log("Error al recuperar borrador:", error);
+      });
+  }, [autorizado, sesion]);
 
   function consultar() {
     const normalizado = codigo.trim().toUpperCase();
+
     setCodigo(normalizado);
+
     if (!validarCodigo(normalizado)) {
-      Alert.alert("Código incorrecto", "Usa el formato MED- seguido de seis dígitos.");
+      Alert.alert(
+        "Código incorrecto",
+        "Usa el formato MED- seguido de seis dígitos."
+      );
       return;
     }
-    router.push({ pathname: "/detalle", params: { codigo: normalizado } });
+
+    router.push({
+      pathname: "/detalle",
+      params: { codigo: normalizado },
+    });
   }
 
   async function cerrar() {
-    await salir();
-    router.replace("/login");
+    try {
+      await salir();
+      router.replace("/login");
+    } catch (error) {
+      console.log("Error al cerrar sesión:", error);
+
+      Alert.alert(
+        "Error",
+        "No se pudo cerrar la sesión."
+      );
+    }
+  }
+
+  if (cargando) {
+    return (
+      <View className="flex-1 items-center justify-center bg-sky-50">
+        <ActivityIndicator
+          size="large"
+          color="#0d9488"
+        />
+      </View>
+    );
+  }
+
+  if (!autorizado) {
+    return <Redirect href="/login" />;
   }
 
   return (
-    <ScrollView style={estilos.pagina} contentContainerStyle={estilos.contenido}>
-      <View style={estilos.cabecera}>
-        <View style={estilos.identidad}>
-          <Text style={estilos.saludo}>Jornada de campo</Text>
-          <Text style={estilos.marca}>AquaCampo</Text>
-          <Text style={estilos.tecnico}>Técnico {sesion}</Text>
-        </View>
-        <View style={estilos.casaMini}>
-          <View style={estilos.techoMini} />
-          <View style={estilos.puertaMini} />
-        </View>
-        <ConnectionStatus
-          conectado={conectado}
-          pendientes={pendientes}
-          conflictos={conflictos}
-          sincronizando={sincronizando}
-        />
-      </View>
-
-      <View style={estilos.tarjetaBusqueda}>
-        <View style={estilos.busquedaEncabezado}>
-          <Text style={estilos.sobreTitulo}>ACCIÓN PRINCIPAL</Text>
-          <Text style={estilos.titulo}>Identificar medidor</Text>
-          <Text style={estilos.descripcion}>Ingresa el código impreso en la etiqueta.</Text>
-        </View>
-        <TextInput
-          autoCapitalize="characters"
-          maxLength={10}
-          placeholder="MED-123456"
-          placeholderTextColor={AquaColores.textoSuave}
-          style={estilos.input}
-          value={codigo}
-          onChangeText={setCodigo}
-          onSubmitEditing={consultar}
-        />
-        <AquaButton titulo="Consultar medidor" onPress={consultar} />
-      </View>
-
-      <View style={estilos.estadisticas}>
-        <View style={estilos.estadistica}><Text style={estilos.numero}>{lecturas.length}</Text><Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={estilos.etiqueta}>Lecturas</Text></View>
-        <View style={estilos.estadistica}><Text style={estilos.numero}>{pendientes}</Text><Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={estilos.etiqueta}>Pendientes</Text></View>
-        <View style={estilos.estadistica}><Text style={estilos.numero}>{enviados}</Text><Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={estilos.etiqueta}>Enviadas</Text></View>
-      </View>
-
-      <View style={estilos.avanceTarjeta}>
-        <View style={estilos.medidorAvance}>
-          <View style={estilos.arcoAvance}>
-            <Text style={estilos.porcentaje}>{porcentajeEnviado}%</Text>
-            <Text style={estilos.porcentajeEtiqueta}>confirmado</Text>
-          </View>
-        </View>
-        <View style={estilos.avanceContenido}>
-          <Text style={estilos.avanceSobreTitulo}>SINCRONIZACIÓN</Text>
-          <Text style={estilos.avanceTitulo}>Avance de lecturas</Text>
-          <Text style={estilos.descripcion}>
-            {enviados} de {lecturas.length} lecturas confirmadas
+    <ScrollView
+      className="flex-1 bg-sky-50"
+      contentContainerStyle={{
+        paddingBottom: 38,
+      }}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* ENCABEZADO */}
+      <Animated.View entering={FadeInDown.duration(500)}>
+        <View className="bg-slate-900 px-6 pb-7 pt-12">
+          <Text className="text-xs font-extrabold tracking-widest text-cyan-200">
+            JORNADA DE CAMPO
           </Text>
-          <View style={estilos.barraFondo}>
-            <View
-              style={[
-                estilos.barraActiva,
-                { width: `${porcentajeEnviado}%` as `${number}%` },
-              ]}
+
+          <Text className="mt-2 text-3xl font-black text-white">
+            AquaCampo
+          </Text>
+
+          <Text className="mt-3 text-base text-cyan-100">
+            Bienvenido, {nombre}
+          </Text>
+
+          {/* ACCESO A EDITAR PERFIL */}
+          <Pressable
+            onPress={() => router.push("/editar-perfil")}
+            className="mt-5 self-start rounded-xl border border-cyan-300 bg-teal-700 px-5 py-3"
+          >
+            <Text className="font-bold text-white">
+              Mi perfil
+            </Text>
+          </Pressable>
+
+          <View className="mt-5">
+            <ConnectionStatus
+              conectado={conectado}
+              pendientes={pendientes}
+              conflictos={conflictos}
+              sincronizando={sincronizando}
             />
           </View>
         </View>
+      </Animated.View>
+
+      {/* CONSULTAR MEDIDOR */}
+      <Animated.View entering={FadeInUp.delay(100).duration(500)}>
+        <View className="mx-4 mt-5 rounded-2xl border border-cyan-100 bg-white p-5">
+          <Text className="text-xs font-extrabold tracking-widest text-teal-700">
+            ACCIÓN PRINCIPAL
+          </Text>
+
+          <Text className="mt-2 text-2xl font-black text-slate-900">
+            Identificar medidor
+          </Text>
+
+          <Text className="mb-5 mt-2 text-sm text-slate-500">
+            Ingresa el código impreso en la etiqueta.
+          </Text>
+
+          <TextInput
+            autoCapitalize="characters"
+            maxLength={10}
+            placeholder="MED-123456"
+            placeholderTextColor="#94a3b8"
+            className="mb-4 min-h-14 rounded-xl border border-slate-300 bg-slate-50 px-4 text-lg font-bold text-slate-900"
+            value={codigo}
+            onChangeText={setCodigo}
+            onSubmitEditing={consultar}
+          />
+
+          <AquaButton
+            titulo="Consultar medidor"
+            onPress={consultar}
+          />
+        </View>
+      </Animated.View>
+
+      {/* ESTADÍSTICAS */}
+      <View className="mx-4 mt-5 flex-row gap-2">
+        <View className="min-w-0 flex-1 items-center rounded-xl border border-slate-200 bg-white p-3">
+          <Text className="text-2xl font-black text-slate-900">
+            {lecturas.length}
+          </Text>
+
+          <Text
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            numberOfLines={1}
+            className="text-xs font-semibold text-slate-500"
+          >
+            Lecturas
+          </Text>
+        </View>
+
+        <View className="min-w-0 flex-1 items-center rounded-xl border border-slate-200 bg-white p-3">
+          <Text className="text-2xl font-black text-slate-900">
+            {pendientes}
+          </Text>
+
+          <Text
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            numberOfLines={1}
+            className="text-xs font-semibold text-slate-500"
+          >
+            Pendientes
+          </Text>
+        </View>
+
+        <View className="min-w-0 flex-1 items-center rounded-xl border border-slate-200 bg-white p-3">
+          <Text className="text-2xl font-black text-slate-900">
+            {enviados}
+          </Text>
+
+          <Text
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            numberOfLines={1}
+            className="text-xs font-semibold text-slate-500"
+          >
+            Enviadas
+          </Text>
+        </View>
       </View>
 
-      <AquaIllustration compacta />
-      <AquaButton
-        titulo="Ver lecturas y sincronización"
-        onPress={() => router.push("/pendientes")}
-        secundario
-        style={estilos.botonAncho}
-      />
-      <AquaButton titulo="Cerrar sesión" onPress={cerrar} peligro style={estilos.botonAncho} />
+      {/* AVANCE DE SINCRONIZACIÓN */}
+      <View className="mx-4 mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+        <Text className="text-xs font-extrabold tracking-widest text-teal-700">
+          SINCRONIZACIÓN
+        </Text>
+
+        <Text className="mt-2 text-xl font-black text-slate-900">
+          Avance de lecturas
+        </Text>
+
+        <Text className="mt-2 text-sm text-slate-500">
+          {enviados} de {lecturas.length} lecturas confirmadas
+        </Text>
+
+        <View className="mt-5 h-3 overflow-hidden rounded-full bg-cyan-100">
+          <View
+            className="h-full rounded-full bg-teal-600"
+            style={{
+              width: `${porcentajeEnviado}%`,
+            }}
+          />
+        </View>
+
+        <Text className="mt-3 text-right text-sm font-bold text-teal-700">
+          {porcentajeEnviado}% confirmado
+        </Text>
+      </View>
+
+      {/* ILUSTRACIÓN EXISTENTE */}
+      <View className="mt-5">
+        <AquaIllustration compacta />
+      </View>
+
+      {/* LECTURAS Y SINCRONIZACIÓN */}
+      <View className="mx-4 mt-5">
+        <AquaButton
+          titulo="Ver lecturas y sincronización"
+          onPress={() => router.push("/pendientes")}
+          secundario
+        />
+      </View>
+
+      {/* EDITAR PERFIL */}
+      <Pressable
+        onPress={() => router.push("/editar-perfil")}
+        className="mx-4 mt-4 items-center rounded-xl border border-teal-300 bg-white p-4"
+      >
+        <Text className="font-bold text-teal-700">
+          Editar nombre de usuario
+        </Text>
+      </Pressable>
+
+      {/* CERRAR SESIÓN */}
+      <View className="mx-4 mt-4">
+        <AquaButton
+          titulo="Cerrar sesión"
+          onPress={cerrar}
+          peligro
+        />
+      </View>
     </ScrollView>
   );
 }
-
-const estilos = StyleSheet.create({
-  pagina: { flex: 1, backgroundColor: AquaColores.fondo },
-  contenido: { paddingBottom: 38, gap: AquaEspaciado.medio },
-  cabecera: { backgroundColor: AquaColores.marino, paddingHorizontal: AquaEspaciado.grande, paddingTop: 50, paddingBottom: AquaEspaciado.grande, flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
-  identidad: { flex: 1, minWidth: 190 },
-  saludo: { color: AquaColores.celeste, fontSize: 12, fontWeight: "800", letterSpacing: 1 },
-  marca: { color: AquaColores.blanco, fontSize: 29, fontWeight: "900" },
-  tecnico: { color: AquaColores.celeste, marginTop: 3 },
-  casaMini: { width: 44, height: 37, marginRight: 7, marginTop: 8, borderRadius: 5, backgroundColor: AquaColores.blanco, borderWidth: 2, borderColor: AquaColores.celeste, alignItems: "center", justifyContent: "flex-end" },
-  techoMini: { position: "absolute", top: -10, width: 31, height: 31, borderRadius: 4, backgroundColor: AquaColores.turquesa, transform: [{ rotate: "45deg" }] },
-  puertaMini: { width: 12, height: 21, borderTopLeftRadius: 6, borderTopRightRadius: 6, backgroundColor: AquaColores.marino, zIndex: 1 },
-  estadisticas: { marginHorizontal: 18, flexDirection: "row", gap: AquaEspaciado.pequeno },
-  estadistica: { flex: 1, minWidth: 0, backgroundColor: AquaColores.blanco, borderRadius: AquaRadios.medio, borderWidth: 1, borderColor: AquaColores.linea, alignItems: "center", paddingHorizontal: 7, paddingVertical: 14 },
-  numero: { color: AquaColores.marino, fontSize: 23, fontWeight: "900" },
-  etiqueta: { width: "100%", color: AquaColores.textoSuave, textAlign: "center", fontSize: 11, fontWeight: "700" },
-  avanceTarjeta: { marginHorizontal: 18, backgroundColor: AquaColores.blanco, borderRadius: AquaRadios.grande, borderWidth: 1, borderColor: AquaColores.linea, padding: 18, flexDirection: "row", alignItems: "center", gap: 17 },
-  medidorAvance: { width: 92, height: 60, overflow: "hidden", justifyContent: "flex-end" },
-  arcoAvance: { width: 92, height: 92, borderRadius: 46, borderWidth: 9, borderColor: AquaColores.turquesa, backgroundColor: AquaColores.celesteSuave, alignItems: "center", paddingTop: 18 },
-  porcentaje: { color: AquaColores.marino, fontSize: 20, fontWeight: "900" },
-  porcentajeEtiqueta: { color: AquaColores.textoSuave, fontSize: 9, fontWeight: "700" },
-  avanceContenido: { flex: 1, minWidth: 0, gap: 3 },
-  avanceSobreTitulo: { color: AquaColores.turquesaOscuro, fontSize: 9, fontWeight: "900", letterSpacing: 1.1 },
-  avanceTitulo: { color: AquaColores.marino, fontSize: 18, fontWeight: "900" },
-  barraFondo: { height: 7, borderRadius: 4, marginTop: 7, backgroundColor: AquaColores.celesteSuave, overflow: "hidden" },
-  barraActiva: { height: "100%", borderRadius: 4, backgroundColor: AquaColores.turquesa },
-  tarjetaBusqueda: { marginHorizontal: 18, marginTop: -8, backgroundColor: AquaColores.blanco, borderRadius: AquaRadios.grande, borderWidth: 1, borderColor: AquaColores.borde, borderLeftWidth: 5, borderLeftColor: AquaColores.turquesa, padding: AquaEspaciado.grande, gap: 13, ...AquaSombra },
-  busquedaEncabezado: { gap: 4 },
-  sobreTitulo: { color: AquaColores.turquesaOscuro, fontSize: AquaTipografia.etiqueta, fontWeight: "900", letterSpacing: 1.2 },
-  titulo: { color: AquaColores.marino, fontSize: AquaTipografia.titulo, fontWeight: "900", letterSpacing: -0.3 },
-  descripcion: { color: AquaColores.textoSuave, fontSize: AquaTipografia.cuerpo, lineHeight: 21 },
-  input: { minHeight: 54, borderWidth: 1, borderColor: AquaColores.borde, backgroundColor: AquaColores.superficie, borderRadius: 15, paddingHorizontal: 15, color: AquaColores.texto, fontSize: 18, fontWeight: "800", letterSpacing: 1 },
-  botonAncho: { marginHorizontal: 18 },
-});
