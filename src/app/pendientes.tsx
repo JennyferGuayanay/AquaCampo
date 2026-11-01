@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Image, ScrollView, Text, View } from "react-n
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from "react-native-reanimated";
 
 import { AquaButton } from "../components/AquaButton";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 import { useAqua } from "../context/AquaContext";
 import type { EstadoSync, Lectura } from "../types/models";
@@ -79,11 +80,13 @@ export default function Pendientes() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-sky-50"
-      contentContainerClassName="gap-4 p-5 pb-12"
-      showsVerticalScrollIndicator={false}
-    >
+    <View className="flex-1 bg-sky-50">
+      <AquaMotionBackground />
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="gap-4 p-5 pb-12"
+        showsVerticalScrollIndicator={false}
+      >
       <Animated.View entering={FadeInDown.duration(450)} className="gap-3 rounded-3xl bg-slate-900 p-5">
         <Text className="text-2xl font-black text-white">Estado de la jornada</Text>
         <ConnectionStatus />
@@ -174,6 +177,7 @@ export default function Pendientes() {
 
       <AquaButton titulo="Actualizar y sincronizar" onPress={ejecutarSync} cargando={sincronizando} />
       <AquaButton titulo="Volver al panel" onPress={() => router.dismissTo("/medidores")} secundario />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

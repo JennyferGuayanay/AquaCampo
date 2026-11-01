@@ -22,6 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { auth } from "../config/firebase";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 
 export default function RecuperarClave() {
@@ -89,6 +90,7 @@ export default function RecuperarClave() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       className="flex-1 bg-sky-50"
     >
+      <AquaMotionBackground />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerClassName="flex-grow justify-center px-6 py-12"

@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from "react-native-reanimated";
 
 import { AquaButton } from "../components/AquaButton";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 import { MeterCard } from "../components/MeterCard";
 import { useAqua } from "../context/AquaContext";
@@ -18,6 +19,7 @@ export default function Detalle() {
   if (cargandoSesion) {
     return (
       <View className="flex-1 items-center justify-center bg-sky-50">
+        <AquaMotionBackground />
         <ActivityIndicator size="large" color="#087C98" />
       </View>
     );
@@ -27,6 +29,7 @@ export default function Detalle() {
   if (!validarCodigo(codigo)) {
     return (
       <View className="flex-1 items-center justify-center gap-5 bg-sky-50 p-6">
+        <AquaMotionBackground />
         <Text className="text-center text-2xl font-black text-slate-900">
           Código no válido
         </Text>
@@ -36,11 +39,13 @@ export default function Detalle() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-sky-50"
-      contentContainerClassName="flex-grow gap-4 p-5 pb-12"
-      showsVerticalScrollIndicator={false}
-    >
+    <View className="flex-1 bg-sky-50">
+      <AquaMotionBackground />
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="flex-grow gap-4 p-5 pb-12"
+        showsVerticalScrollIndicator={false}
+      >
       <Animated.View entering={FadeInDown.duration(450)} className="gap-2">
         <Text className="text-xs font-black tracking-widest text-teal-700">
           CONSULTA DE CAMPO
@@ -92,6 +97,7 @@ export default function Detalle() {
           )}
         </Animated.View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

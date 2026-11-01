@@ -3,6 +3,7 @@ import { ActivityIndicator, Text, View } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 import { AquaIllustration } from "../components/AquaIllustration";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { useAqua } from "../context/AquaContext";
 
 export default function Inicio() {
@@ -11,6 +12,7 @@ export default function Inicio() {
   if (cargando) {
     return (
       <View className="flex-1 items-center justify-center bg-white px-6">
+        <AquaMotionBackground />
         <Animated.View entering={FadeInDown.duration(450)} className="items-center">
           <Text className="text-4xl font-black tracking-tight text-slate-900">AquaCampo</Text>
           <Text className="mt-1 font-semibold text-slate-500">

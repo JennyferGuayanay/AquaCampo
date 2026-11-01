@@ -32,8 +32,8 @@ import { AnimatedTextField } from "../components/AnimatedTextField";
 import { AquaButton } from "../components/AquaButton";
 import { AquaDropLogo } from "../components/AquaDropLogo";
 import { AquaIllustration } from "../components/AquaIllustration";
-import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
+import { WaterMeterPhotoBackground } from "../components/WaterMeterPhotoBackground";
 import { auth } from "../config/firebase";
 import { useAqua } from "../context/AquaContext";
 
@@ -140,8 +140,8 @@ export default function Login() {
   }
 
   return (
-    <View className="flex-1 bg-sky-50">
-      <AquaMotionBackground />
+    <View className="flex-1 bg-slate-950">
+      <WaterMeterPhotoBackground intenso />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
@@ -154,8 +154,8 @@ export default function Login() {
         >
           <Animated.View entering={FadeInDown.duration(650)} className="items-center">
             <AquaDropLogo />
-            <Text className="mt-1 text-center text-4xl font-black text-slate-900">AquaCampo</Text>
-            <Text className="mt-2 text-center font-semibold text-slate-600">
+            <Text className="mt-1 text-center text-4xl font-black text-white">AquaCampo</Text>
+            <Text className="mt-2 text-center font-semibold text-cyan-100">
               Agua, tecnología y trabajo de campo
             </Text>
             <View className="mt-4">
@@ -165,14 +165,14 @@ export default function Login() {
 
           <Animated.View
             entering={FadeInUp.delay(100).duration(600)}
-            className="my-2 overflow-hidden rounded-3xl border border-white/80 bg-white/65 px-3"
+            className="my-2 overflow-hidden rounded-3xl border border-white/30 bg-white/80 px-3"
           >
             <AquaIllustration compacta />
           </Animated.View>
 
           <Animated.View style={estiloEntrada}>
             <Animated.View style={estiloShake}>
-              <View className="rounded-3xl border border-cyan-100 bg-white p-6 shadow-lg">
+              <View className="rounded-3xl border border-white/70 bg-white/95 p-6 shadow-lg">
                 <Text className="mb-1 text-2xl font-black text-slate-900">Iniciar sesión</Text>
                 <Text className="mb-5 text-sm text-slate-500">
                   Accede a tus medidores y lecturas sincronizadas.
@@ -217,6 +217,10 @@ export default function Login() {
               </View>
             </Animated.View>
           </Animated.View>
+
+          <Text className="mt-5 text-center text-[10px] text-cyan-100/80">
+            Fotografía: Basile Morin · CC BY-SA 4.0
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

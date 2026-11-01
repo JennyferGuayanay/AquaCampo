@@ -29,6 +29,11 @@ import {
   recuperarEnviosInterrumpidos,
 } from "../storage/local";
 import type { Lectura } from "../types/models";
+import {
+  conservarFotoPerfil,
+  eliminarFotoPerfil,
+  obtenerFotoPerfil,
+} from "../storage/photoStorage";
 
 interface AquaContexto {
   sesion: string | null;
@@ -36,10 +41,13 @@ interface AquaContexto {
   conectado: boolean;
   lecturas: Lectura[];
   sincronizando: boolean;
+  fotoPerfilUri: string | null;
   entrar(codigo: string): Promise<void>;
   salir(): Promise<void>;
   actualizar(): Promise<void>;
   sincronizar(): Promise<ResultadoSync | null>;
+  guardarFotoPerfil(uriTemporal: string): Promise<void>;
+  borrarFotoPerfil(): Promise<void>;
 }
 
 const Contexto = createContext<AquaContexto | null>(null);
@@ -51,8 +59,30 @@ export function AquaProvider({ children }: PropsWithChildren) {
   const [cargando, setCargando] = useState(true);
   const [lecturas, setLecturas] = useState<Lectura[]>([]);
   const [sincronizando, setSincronizando] = useState(false);
+  const [fotoPerfil, setFotoPerfil] = useState<{ uid: string; uri: string | null } | null>(null);
+  const fotoPerfilUri = fotoPerfil?.uid === sesion ? fotoPerfil.uri : null;
 
   const sincronizandoRef = useRef(false);
+
+  useEffect(() => {
+    let activo = true;
+
+    if (!sesion) return;
+
+    const uid = sesion;
+    void obtenerFotoPerfil(uid)
+      .then((uri) => {
+        if (activo) setFotoPerfil({ uid, uri });
+      })
+      .catch((error) => {
+        console.log("Error al cargar foto de perfil:", error);
+        if (activo) setFotoPerfil({ uid, uri: null });
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [sesion]);
 
   const actualizar = useCallback(async () => {
     setLecturas(await obtenerLecturas());
@@ -232,6 +262,19 @@ export function AquaProvider({ children }: PropsWithChildren) {
     setSesion(null);
   }
 
+  async function guardarFotoPerfil(uriTemporal: string) {
+    if (!sesion) throw new Error("No existe una sesión activa.");
+    const uid = sesion;
+    setFotoPerfil({ uid, uri: await conservarFotoPerfil(uriTemporal, uid) });
+  }
+
+  async function borrarFotoPerfil() {
+    if (!sesion) throw new Error("No existe una sesión activa.");
+    const uid = sesion;
+    await eliminarFotoPerfil(uid);
+    setFotoPerfil({ uid, uri: null });
+  }
+
   return (
     <Contexto.Provider
       value={{
@@ -240,10 +283,13 @@ export function AquaProvider({ children }: PropsWithChildren) {
         conectado,
         lecturas,
         sincronizando,
+        fotoPerfilUri,
         entrar,
         salir,
         actualizar,
         sincronizar,
+        guardarFotoPerfil,
+        borrarFotoPerfil,
       }}
     >
       {children}

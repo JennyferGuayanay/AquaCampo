@@ -1,5 +1,6 @@
 
 import { Redirect, router } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -15,15 +16,20 @@ import {
 import Animated, {
   FadeInDown,
   FadeInUp,
+  ReduceMotion,
   ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
 } from "react-native-reanimated";
 
 import { auth } from "../config/firebase";
 import { AnimatedProgressBar, AnimatedStatCard } from "../components/AnimatedMetrics";
 import { AquaButton } from "../components/AquaButton";
 import { AquaIllustration } from "../components/AquaIllustration";
-import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
+import { UserAvatar } from "../components/UserAvatar";
+import { WaterMeterPhotoBackground } from "../components/WaterMeterPhotoBackground";
 import { useAqua } from "../context/AquaContext";
 import {
   borrarBorrador,
@@ -37,10 +43,15 @@ export default function Medidores() {
     cargando,
     lecturas,
     salir,
+    fotoPerfilUri,
   } = useAqua();
 
   const [codigo, setCodigo] = useState("");
   const borradorRevisado = useRef(false);
+  const escalaPerfil = useSharedValue(1);
+  const estiloPerfil = useAnimatedStyle(() => ({
+    transform: [{ scale: escalaPerfil.get() }],
+  }));
 
   const usuario = auth.currentUser;
 
@@ -52,6 +63,12 @@ export default function Medidores() {
 
   const nombre =
     usuario?.displayName?.trim() || "Técnico";
+  const iniciales = (usuario?.displayName || usuario?.email || "AC")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toUpperCase())
+    .join("");
 
   const pendientes = lecturas.filter(
     (item) => item.estadoSync !== "enviado"
@@ -141,6 +158,17 @@ export default function Medidores() {
     }
   }
 
+  function animarPerfil(valor: number) {
+    escalaPerfil.set(
+      withSpring(valor, {
+        damping: 13,
+        stiffness: 240,
+        mass: 0.55,
+        reduceMotion: ReduceMotion.System,
+      }),
+    );
+  }
+
   if (cargando) {
     return (
       <View className="flex-1 items-center justify-center bg-sky-50">
@@ -158,7 +186,7 @@ export default function Medidores() {
 
   return (
     <View className="flex-1 bg-sky-50">
-      <AquaMotionBackground />
+      <WaterMeterPhotoBackground />
       <ScrollView
       className="flex-1 bg-transparent"
       contentContainerClassName="pb-10"
@@ -182,9 +210,23 @@ export default function Medidores() {
             </View>
           </View>
 
-          <Text className="mt-3 text-base text-cyan-100">
-            Bienvenido, {nombre}
-          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Abrir Mi perfil"
+            onPress={() => router.push("/editar-perfil")}
+            className="mt-5 flex-row items-center gap-3"
+          >
+            <UserAvatar uri={fotoPerfilUri} iniciales={iniciales} />
+            <View className="min-w-0 flex-1">
+              <Text className="text-sm text-cyan-100">Bienvenido</Text>
+              <Text className="text-xl font-black text-white" numberOfLines={1}>{nombre}</Text>
+            </View>
+            <SymbolView
+              name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" }}
+              size={22}
+              tintColor="#a5f3fc"
+            />
+          </Pressable>
 
           <View className="mt-5">
             <ConnectionStatus />
@@ -192,9 +234,41 @@ export default function Medidores() {
         </View>
       </Animated.View>
 
+      <Animated.View
+        entering={FadeInDown.delay(80).springify().damping(15)}
+        style={estiloPerfil}
+        className="mx-4 mt-5"
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Mi perfil, cuenta, seguridad y datos personales"
+          onPress={() => router.push("/editar-perfil")}
+          onPressIn={() => animarPerfil(0.96)}
+          onPressOut={() => animarPerfil(1)}
+          className="min-h-24 flex-row items-center gap-4 overflow-hidden rounded-3xl bg-teal-700 p-4 shadow-lg"
+        >
+          <View className="absolute -right-5 -top-9 h-28 w-28 rounded-full bg-slate-900/25" />
+          <View className="absolute -bottom-8 right-16 h-20 w-20 rounded-full bg-cyan-200/15" />
+          <UserAvatar uri={fotoPerfilUri} iniciales={iniciales} tamano="tarjeta" />
+          <View className="min-w-0 flex-1">
+            <Text className="text-xl font-black text-white">Mi perfil</Text>
+            <Text className="mt-1 text-sm leading-5 text-cyan-50">
+              Cuenta, seguridad y datos personales
+            </Text>
+          </View>
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-900/30">
+            <SymbolView
+              name={{ ios: "arrow.right", android: "arrow_forward", web: "arrow_forward" }}
+              size={21}
+              tintColor="#ffffff"
+            />
+          </View>
+        </Pressable>
+      </Animated.View>
+
       {/* CONSULTAR MEDIDOR */}
       <Animated.View entering={FadeInUp.delay(100).duration(500)}>
-        <View className="mx-4 mt-5 rounded-2xl border border-cyan-100 bg-white p-5">
+        <View className="mx-4 mt-5 rounded-2xl border border-cyan-100 bg-white/95 p-5">
           <Text className="text-xs font-extrabold tracking-widest text-teal-700">
             ACCIÓN PRINCIPAL
           </Text>
@@ -233,7 +307,7 @@ export default function Medidores() {
       </Animated.View>
 
       {/* AVANCE DE SINCRONIZACIÓN */}
-      <View className="mx-4 mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+      <View className="mx-4 mt-5 rounded-2xl border border-slate-200 bg-white/95 p-5">
         <Text className="text-xs font-extrabold tracking-widest text-teal-700">
           SINCRONIZACIÓN
         </Text>
@@ -272,17 +346,6 @@ export default function Medidores() {
           secundario
         />
       </View>
-
-      <Pressable
-        onPress={() => router.push("/editar-perfil")}
-        className="mx-4 mt-4 flex-row items-center justify-between rounded-2xl border border-cyan-100 bg-white p-4"
-      >
-        <View>
-          <Text className="font-black text-slate-900">Mi perfil</Text>
-          <Text className="mt-1 text-sm text-slate-500">Cuenta, seguridad y datos personales</Text>
-        </View>
-        <Text className="text-xl font-black text-teal-700">›</Text>
-      </Pressable>
 
       {/* CERRAR SESIÓN */}
       <View className="mx-4 mt-4">

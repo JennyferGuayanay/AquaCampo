@@ -19,6 +19,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { auth } from "../config/firebase";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 import { useAqua } from "../context/AquaContext";
 
@@ -104,6 +105,7 @@ export default function VerificarCorreo() {
 
   return (
     <View className="flex-1 justify-center bg-sky-50 px-6">
+      <AquaMotionBackground />
       <Animated.View entering={FadeInDown.duration(500)}>
         <View className="mb-6 items-center">
           <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-cyan-100">

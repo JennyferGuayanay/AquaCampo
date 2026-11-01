@@ -11,6 +11,7 @@ import {
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 import { AquaButton } from "../components/AquaButton";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 import { MeterCard } from "../components/MeterCard";
 import { ReadingForm } from "../components/ReadingForm";
@@ -188,12 +189,14 @@ export default function Registro() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-sky-50"
-      contentContainerClassName="gap-4 p-5 pb-12"
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
+    <View className="flex-1 bg-sky-50">
+      <AquaMotionBackground />
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="gap-4 p-5 pb-12"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <Animated.View entering={FadeInDown.duration(450)} className="gap-2">
         <Text className="text-xs font-black tracking-widest text-teal-700">CAPTURA EN CAMPO</Text>
         <Text className="text-3xl font-black text-slate-900">Registrar lectura</Text>
@@ -242,6 +245,7 @@ export default function Registro() {
         />
       )}
       <AquaButton titulo="Descartar borrador y salir" onPress={descartar} secundario />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

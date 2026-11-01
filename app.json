@@ -42,7 +42,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "AquaCampo necesita acceder a la cámara para fotografiar los medidores de agua."
+          "cameraPermission": "AquaCampo necesita acceder a la cámara para fotografiar medidores y tu foto de perfil."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "AquaCampo necesita acceder a tus fotos para elegir una imagen de perfil.",
+          "cameraPermission": "AquaCampo necesita acceder a la cámara para fotografiar medidores y tomar tu foto de perfil."
         }
       ]
     ],
