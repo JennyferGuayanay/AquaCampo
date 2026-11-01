@@ -3,14 +3,12 @@ import { useRef, useState } from "react";
 import {
   Alert,
   Image,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 
-import { AquaColores, AquaSombra } from "../constants/aquaTheme";
 import { conservarFoto } from "../storage/photoStorage";
 import type { Borrador, EstadoMedidor, Medidor } from "../types/models";
 import { calcularConsumo, esAnomalo, validarRegistro } from "../utils/rules";
@@ -148,16 +146,16 @@ export function ReadingForm({
 
   if (mostrarCamara) {
     return (
-      <View style={estilos.camaraContenedor}>
+      <View className="gap-3">
         <CameraView
           ref={camara}
           facing="back"
           onCameraReady={() => setCamaraLista(true)}
           onMountError={() => setCamaraLista(false)}
-          style={estilos.camara}
+          style={{ width: "100%", aspectRatio: 3 / 4, borderRadius: 22, overflow: "hidden" }}
         />
 
-        <Text style={estilos.ayudaCamara}>
+        <Text className="text-center text-slate-500">
           {camaraLista ? "Centra el medidor y captura" : "Preparando cámara..."}
         </Text>
 
@@ -178,14 +176,14 @@ export function ReadingForm({
   }
 
   return (
-    <View style={estilos.tarjeta}>
-      <Text style={estilos.titulo}>Lectura de campo</Text>
+    <View className="gap-4 rounded-3xl border border-cyan-100 bg-white p-5 shadow-sm">
+      <Text className="text-2xl font-black text-slate-900">Lectura de campo</Text>
 
-      <Text style={estilos.descripcion}>
+      <Text className="leading-5 text-slate-500">
         Selecciona el estado observado antes de guardar.
       </Text>
 
-      <View style={estilos.opciones}>
+      <View className="flex-row gap-2">
         {(["normal", "inaccesible", "dañado"] as EstadoMedidor[]).map(
           (estado) => (
             <TouchableOpacity
@@ -196,16 +194,18 @@ export function ReadingForm({
                   confirmado: false,
                 })
               }
-              style={[
-                estilos.opcion,
-                valor.estado === estado && estilos.opcionActiva,
-              ]}
+              className={`flex-1 items-center rounded-xl border py-3 ${
+                valor.estado === estado
+                  ? "border-teal-700 bg-cyan-100"
+                  : "border-cyan-100 bg-white"
+              }`}
             >
               <Text
-                style={[
-                  estilos.textoOpcion,
-                  valor.estado === estado && estilos.textoOpcionActiva,
-                ]}
+                className={`capitalize ${
+                  valor.estado === estado
+                    ? "font-black text-slate-900"
+                    : "text-slate-500"
+                }`}
               >
                 {estado}
               </Text>
@@ -216,9 +216,9 @@ export function ReadingForm({
 
       {valor.estado !== "inaccesible" && (
         <TextInput
-          style={estilos.input}
+          className="rounded-2xl border border-cyan-100 bg-slate-50 p-4 text-base text-slate-800"
           placeholder="Lectura actual en m³"
-          placeholderTextColor={AquaColores.textoSuave}
+          placeholderTextColor="#688391"
           keyboardType="numeric"
           value={valor.lectura}
           onChangeText={(lectura) =>
@@ -232,9 +232,9 @@ export function ReadingForm({
 
       {valor.estado === "inaccesible" && (
         <TextInput
-          style={estilos.input}
+          className="rounded-2xl border border-cyan-100 bg-slate-50 p-4 text-base text-slate-800"
           placeholder="Motivo por el que no fue accesible"
-          placeholderTextColor={AquaColores.textoSuave}
+          placeholderTextColor="#688391"
           value={valor.motivo}
           onChangeText={(motivo) => cambiar({ motivo })}
         />
@@ -242,9 +242,9 @@ export function ReadingForm({
 
       {valor.estado === "dañado" && (
         <TextInput
-          style={[estilos.input, estilos.multilinea]}
+          className="min-h-24 rounded-2xl border border-cyan-100 bg-slate-50 p-4 text-base text-slate-800"
           placeholder="Descripción del daño"
-          placeholderTextColor={AquaColores.textoSuave}
+          placeholderTextColor="#688391"
           value={valor.descripcion}
           onChangeText={(descripcion) => cambiar({ descripcion })}
           multiline
@@ -253,21 +253,23 @@ export function ReadingForm({
 
       {/* Mostrar consumo cuando existe lectura anterior */}
       {consumo !== null && (
-        <View style={estilos.consumoCaja}>
-          <Text style={estilos.consumoEtiqueta}>CONSUMO CALCULADO</Text>
+        <View className="items-center rounded-2xl bg-slate-900 p-4">
+          <Text className="text-[11px] font-extrabold tracking-widest text-cyan-200">
+            CONSUMO CALCULADO
+          </Text>
 
-          <Text style={estilos.consumo}>{consumo} m³</Text>
+          <Text className="text-3xl font-black text-white">{consumo} m³</Text>
         </View>
       )}
 
       {/* R4: mostrar aviso cuando no existe lectura anterior */}
       {sinLecturaAnterior && valor.estado !== "inaccesible" && (
-        <View style={estilos.advertencia}>
-          <Text style={estilos.advertenciaTitulo}>
+        <View className="gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <Text className="text-base font-black text-amber-900">
             Pendiente de verificación
           </Text>
 
-          <Text style={estilos.descripcion}>
+          <Text className="leading-5 text-amber-900">
             Este medidor no tiene una lectura anterior registrada. La lectura
             actual se guardará, pero el consumo quedará pendiente de cálculo y
             verificación.
@@ -277,10 +279,10 @@ export function ReadingForm({
 
       {/* R6: advertencia por consumo anomalo */}
       {anomalo && (
-        <View style={estilos.advertencia}>
-          <Text style={estilos.advertenciaTitulo}>Consumo fuera de rango</Text>
+        <View className="gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <Text className="text-base font-black text-amber-900">Consumo fuera de rango</Text>
 
-          <Text style={estilos.descripcion}>
+          <Text className="leading-5 text-amber-900">
             Supera tres veces el promedio mensual. Revisa el medidor y documenta
             la evidencia.
           </Text>
@@ -292,7 +294,7 @@ export function ReadingForm({
               })
             }
           >
-            <Text style={estilos.confirmacion}>
+            <Text className="font-extrabold text-slate-900">
               {valor.confirmado ? "☑" : "☐"} Confirmo que revisé el medidor
             </Text>
           </TouchableOpacity>
@@ -306,7 +308,11 @@ export function ReadingForm({
       />
 
       {valor.fotoUri && (
-        <Image source={{ uri: valor.fotoUri }} style={estilos.foto} />
+        <Image
+          source={{ uri: valor.fotoUri }}
+          className="h-48 w-full rounded-2xl"
+          resizeMode="cover"
+        />
       )}
 
       <AquaButton
@@ -317,128 +323,3 @@ export function ReadingForm({
     </View>
   );
 }
-
-const estilos = StyleSheet.create({
-  tarjeta: {
-    backgroundColor: AquaColores.blanco,
-    borderRadius: 24,
-    padding: 20,
-    gap: 14,
-    ...AquaSombra,
-  },
-
-  titulo: {
-    color: AquaColores.marino,
-    fontSize: 22,
-    fontWeight: "900",
-  },
-
-  descripcion: {
-    color: AquaColores.textoSuave,
-    lineHeight: 20,
-  },
-
-  opciones: {
-    flexDirection: "row",
-    gap: 7,
-  },
-
-  opcion: {
-    flex: 1,
-    paddingVertical: 11,
-    borderWidth: 1,
-    borderColor: AquaColores.borde,
-    borderRadius: 13,
-    alignItems: "center",
-  },
-
-  opcionActiva: {
-    backgroundColor: AquaColores.celeste,
-    borderColor: AquaColores.turquesaOscuro,
-  },
-
-  textoOpcion: {
-    color: AquaColores.textoSuave,
-    textTransform: "capitalize",
-  },
-
-  textoOpcionActiva: {
-    color: AquaColores.marino,
-    fontWeight: "900",
-  },
-
-  input: {
-    borderWidth: 1,
-    borderColor: AquaColores.borde,
-    backgroundColor: "#F8FCFD",
-    borderRadius: 14,
-    padding: 14,
-    color: AquaColores.texto,
-    fontSize: 16,
-  },
-
-  multilinea: {
-    minHeight: 90,
-    textAlignVertical: "top",
-  },
-
-  consumoCaja: {
-    backgroundColor: AquaColores.marino,
-    borderRadius: 16,
-    padding: 15,
-    alignItems: "center",
-  },
-
-  consumoEtiqueta: {
-    color: AquaColores.celeste,
-    fontSize: 11,
-    fontWeight: "800",
-  },
-
-  consumo: {
-    color: AquaColores.blanco,
-    fontSize: 28,
-    fontWeight: "900",
-  },
-
-  advertencia: {
-    backgroundColor: AquaColores.aviso,
-    padding: 15,
-    borderRadius: 16,
-    gap: 8,
-  },
-
-  advertenciaTitulo: {
-    color: "#764B00",
-    fontWeight: "900",
-    fontSize: 16,
-  },
-
-  confirmacion: {
-    color: AquaColores.marino,
-    fontWeight: "800",
-  },
-
-  foto: {
-    width: "100%",
-    height: 190,
-    borderRadius: 16,
-    resizeMode: "cover",
-  },
-
-  camaraContenedor: {
-    gap: 12,
-  },
-
-  camara: {
-    width: "100%",
-    aspectRatio: 3 / 4,
-    borderRadius: 22,
-    overflow: "hidden",
-  },
-
-  ayudaCamara: {
-    textAlign: "center",
-    color: AquaColores.textoSuave,
-  },
-});

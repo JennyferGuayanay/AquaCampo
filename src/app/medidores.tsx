@@ -15,11 +15,14 @@ import {
 import Animated, {
   FadeInDown,
   FadeInUp,
+  ZoomIn,
 } from "react-native-reanimated";
 
 import { auth } from "../config/firebase";
+import { AnimatedProgressBar, AnimatedStatCard } from "../components/AnimatedMetrics";
 import { AquaButton } from "../components/AquaButton";
 import { AquaIllustration } from "../components/AquaIllustration";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 import { useAqua } from "../context/AquaContext";
 import {
@@ -32,9 +35,7 @@ export default function Medidores() {
   const {
     sesion,
     cargando,
-    conectado,
     lecturas,
-    sincronizando,
     salir,
   } = useAqua();
 
@@ -54,10 +55,6 @@ export default function Medidores() {
 
   const pendientes = lecturas.filter(
     (item) => item.estadoSync !== "enviado"
-  ).length;
-
-  const conflictos = lecturas.filter(
-    (item) => item.estadoSync === "conflicto"
   ).length;
 
   const enviados = lecturas.filter(
@@ -160,46 +157,37 @@ export default function Medidores() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-sky-50"
-      contentContainerStyle={{
-        paddingBottom: 38,
-      }}
+    <View className="flex-1 bg-sky-50">
+      <AquaMotionBackground />
+      <ScrollView
+      className="flex-1 bg-transparent"
+      contentContainerClassName="pb-10"
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
       {/* ENCABEZADO */}
       <Animated.View entering={FadeInDown.duration(500)}>
-        <View className="bg-slate-900 px-6 pb-7 pt-12">
-          <Text className="text-xs font-extrabold tracking-widest text-cyan-200">
-            JORNADA DE CAMPO
-          </Text>
-
-          <Text className="mt-2 text-3xl font-black text-white">
-            AquaCampo
-          </Text>
+        <View className="overflow-hidden bg-slate-900 px-6 pb-7 pt-12">
+          <View className="absolute -right-12 -top-10 h-40 w-40 rounded-full bg-teal-500/20" />
+          <View className="absolute -right-4 top-20 h-20 w-20 rounded-full bg-sky-400/10" />
+          <View className="flex-row items-center gap-3">
+            <View className="h-12 w-12 items-center justify-center rounded-2xl bg-teal-600">
+              <Text className="text-2xl font-black text-white">A</Text>
+            </View>
+            <View>
+              <Text className="text-xs font-extrabold tracking-widest text-cyan-200">
+                JORNADA DE CAMPO
+              </Text>
+              <Text className="text-3xl font-black text-white">AquaCampo</Text>
+            </View>
+          </View>
 
           <Text className="mt-3 text-base text-cyan-100">
             Bienvenido, {nombre}
           </Text>
 
-          {/* ACCESO A EDITAR PERFIL */}
-          <Pressable
-            onPress={() => router.push("/editar-perfil")}
-            className="mt-5 self-start rounded-xl border border-cyan-300 bg-teal-700 px-5 py-3"
-          >
-            <Text className="font-bold text-white">
-              Mi perfil
-            </Text>
-          </Pressable>
-
           <View className="mt-5">
-            <ConnectionStatus
-              conectado={conectado}
-              pendientes={pendientes}
-              conflictos={conflictos}
-              sincronizando={sincronizando}
-            />
+            <ConnectionStatus />
           </View>
         </View>
       </Animated.View>
@@ -238,52 +226,11 @@ export default function Medidores() {
       </Animated.View>
 
       {/* ESTADÍSTICAS */}
-      <View className="mx-4 mt-5 flex-row gap-2">
-        <View className="min-w-0 flex-1 items-center rounded-xl border border-slate-200 bg-white p-3">
-          <Text className="text-2xl font-black text-slate-900">
-            {lecturas.length}
-          </Text>
-
-          <Text
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-            numberOfLines={1}
-            className="text-xs font-semibold text-slate-500"
-          >
-            Lecturas
-          </Text>
-        </View>
-
-        <View className="min-w-0 flex-1 items-center rounded-xl border border-slate-200 bg-white p-3">
-          <Text className="text-2xl font-black text-slate-900">
-            {pendientes}
-          </Text>
-
-          <Text
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-            numberOfLines={1}
-            className="text-xs font-semibold text-slate-500"
-          >
-            Pendientes
-          </Text>
-        </View>
-
-        <View className="min-w-0 flex-1 items-center rounded-xl border border-slate-200 bg-white p-3">
-          <Text className="text-2xl font-black text-slate-900">
-            {enviados}
-          </Text>
-
-          <Text
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-            numberOfLines={1}
-            className="text-xs font-semibold text-slate-500"
-          >
-            Enviadas
-          </Text>
-        </View>
-      </View>
+      <Animated.View entering={ZoomIn.delay(180).duration(420)} className="mx-4 mt-5 flex-row gap-2">
+        <AnimatedStatCard etiqueta="Lecturas" valor={lecturas.length} demora={180} />
+        <AnimatedStatCard etiqueta="Pendientes" valor={pendientes} demora={280} />
+        <AnimatedStatCard etiqueta="Enviadas" valor={enviados} demora={380} />
+      </Animated.View>
 
       {/* AVANCE DE SINCRONIZACIÓN */}
       <View className="mx-4 mt-5 rounded-2xl border border-slate-200 bg-white p-5">
@@ -299,24 +246,23 @@ export default function Medidores() {
           {enviados} de {lecturas.length} lecturas confirmadas
         </Text>
 
-        <View className="mt-5 h-3 overflow-hidden rounded-full bg-cyan-100">
-          <View
-            className="h-full rounded-full bg-teal-600"
-            style={{
-              width: `${porcentajeEnviado}%`,
-            }}
-          />
-        </View>
+        <AnimatedProgressBar porcentaje={porcentajeEnviado} />
 
         <Text className="mt-3 text-right text-sm font-bold text-teal-700">
           {porcentajeEnviado}% confirmado
         </Text>
       </View>
 
-      {/* ILUSTRACIÓN EXISTENTE */}
-      <View className="mt-5">
+      <Animated.View
+        entering={FadeInUp.delay(220).duration(500)}
+        className="mx-4 mt-5 overflow-hidden rounded-3xl border border-cyan-100 bg-cyan-50 px-4 pt-4"
+      >
+        <Text className="text-xs font-black tracking-widest text-teal-700">RED DE AGUA EN CAMPO</Text>
+        <Text className="mt-1 text-lg font-black text-slate-900">
+          Lecturas confiables, incluso sin conexión
+        </Text>
         <AquaIllustration compacta />
-      </View>
+      </Animated.View>
 
       {/* LECTURAS Y SINCRONIZACIÓN */}
       <View className="mx-4 mt-5">
@@ -327,14 +273,15 @@ export default function Medidores() {
         />
       </View>
 
-      {/* EDITAR PERFIL */}
       <Pressable
         onPress={() => router.push("/editar-perfil")}
-        className="mx-4 mt-4 items-center rounded-xl border border-teal-300 bg-white p-4"
+        className="mx-4 mt-4 flex-row items-center justify-between rounded-2xl border border-cyan-100 bg-white p-4"
       >
-        <Text className="font-bold text-teal-700">
-          Editar nombre de usuario
-        </Text>
+        <View>
+          <Text className="font-black text-slate-900">Mi perfil</Text>
+          <Text className="mt-1 text-sm text-slate-500">Cuenta, seguridad y datos personales</Text>
+        </View>
+        <Text className="text-xl font-black text-teal-700">›</Text>
       </Pressable>
 
       {/* CERRAR SESIÓN */}
@@ -345,6 +292,7 @@ export default function Medidores() {
           peligro
         />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

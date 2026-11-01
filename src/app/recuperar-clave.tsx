@@ -22,6 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { auth } from "../config/firebase";
+import { ConnectionStatus } from "../components/ConnectionStatus";
 
 export default function RecuperarClave() {
   const [email, setEmail] = useState("");
@@ -90,12 +91,7 @@ export default function RecuperarClave() {
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: "center",
-          paddingHorizontal: 24,
-          paddingVertical: 48,
-        }}
+        contentContainerClassName="flex-grow justify-center px-6 py-12"
       >
         <Animated.View entering={FadeInDown.duration(600)}>
           <View className="mb-8 items-center">
@@ -112,6 +108,7 @@ export default function RecuperarClave() {
             <Text className="mt-3 text-center text-sm text-slate-500">
               Recupera el acceso a tu cuenta AquaCampo
             </Text>
+            <View className="mt-4"><ConnectionStatus soloConexion /></View>
           </View>
         </Animated.View>
 

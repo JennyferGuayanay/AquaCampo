@@ -1,13 +1,14 @@
 
 import { Redirect, router } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import {
@@ -18,11 +19,21 @@ import Animated, {
   FadeInDown,
   FadeInUp,
   makeMutable,
+  ReduceMotion,
   useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
   withSequence,
+  withSpring,
   withTiming,
 } from "react-native-reanimated";
 
+import { AnimatedTextField } from "../components/AnimatedTextField";
+import { AquaButton } from "../components/AquaButton";
+import { AquaDropLogo } from "../components/AquaDropLogo";
+import { AquaIllustration } from "../components/AquaIllustration";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
+import { ConnectionStatus } from "../components/ConnectionStatus";
 import { auth } from "../config/firebase";
 import { useAqua } from "../context/AquaContext";
 
@@ -34,10 +45,32 @@ export default function Login() {
   const [enviando, setEnviando] = useState(false);
 
   const desplazamiento = useRef(makeMutable(0));
+  const reducirMovimiento = useReducedMotion();
+  const entradaFormulario = useSharedValue(reducirMovimiento ? 1 : 0);
+
+  useEffect(() => {
+    if (reducirMovimiento) return;
+    entradaFormulario.set(
+      withSpring(1, {
+        damping: 12,
+        stiffness: 115,
+        mass: 0.8,
+        reduceMotion: ReduceMotion.System,
+      }),
+    );
+  }, [entradaFormulario, reducirMovimiento]);
 
   const estiloShake = useAnimatedStyle(() => ({
     transform: [
       { translateX: desplazamiento.current.value },
+    ],
+  }));
+
+  const estiloEntrada = useAnimatedStyle(() => ({
+    opacity: entradaFormulario.get(),
+    transform: [
+      { translateY: (1 - entradaFormulario.get()) * 70 },
+      { scale: 0.86 + entradaFormulario.get() * 0.14 },
     ],
   }));
 
@@ -107,88 +140,85 @@ export default function Login() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-sky-50"
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{
-        flexGrow: 1,
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <Animated.View entering={FadeInDown.duration(500)}>
-        <Text className="mb-8 text-center text-4xl font-bold text-teal-700">
-          AquaCampo
-        </Text>
-      </Animated.View>
-
-      <Animated.View entering={FadeInUp.duration(500)}>
-        <Animated.View style={estiloShake}>
-          <View className="rounded-2xl bg-white p-6">
-            <Text className="mb-5 text-2xl font-bold">
-              Iniciar sesión
+    <View className="flex-1 bg-sky-50">
+      <AquaMotionBackground />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerClassName="flex-grow justify-center px-6 py-10"
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View entering={FadeInDown.duration(650)} className="items-center">
+            <AquaDropLogo />
+            <Text className="mt-1 text-center text-4xl font-black text-slate-900">AquaCampo</Text>
+            <Text className="mt-2 text-center font-semibold text-slate-600">
+              Agua, tecnología y trabajo de campo
             </Text>
+            <View className="mt-4">
+              <ConnectionStatus soloConexion />
+            </View>
+          </Animated.View>
 
-            <Text className="mb-2 font-semibold">
-              Correo electrónico
-            </Text>
+          <Animated.View
+            entering={FadeInUp.delay(100).duration(600)}
+            className="my-2 overflow-hidden rounded-3xl border border-white/80 bg-white/65 px-3"
+          >
+            <AquaIllustration compacta />
+          </Animated.View>
 
-            <TextInput
-              className="mb-5 rounded-xl border border-slate-300 p-3"
-              placeholder="correo@ejemplo.com"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={correo}
-              onChangeText={setCorreo}
-            />
-
-            <Text className="mb-2 font-semibold">
-              Contraseña
-            </Text>
-
-            <TextInput
-              className="mb-6 rounded-xl border border-slate-300 p-3"
-              placeholder="Contraseña"
-              secureTextEntry
-              value={clave}
-              onChangeText={setClave}
-              onSubmitEditing={ingresar}
-            />
-
-            <Pressable
-              onPress={ingresar}
-              disabled={enviando}
-              className="items-center rounded-xl bg-teal-600 p-4"
-            >
-              {enviando ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="font-bold text-white">
-                  Ingresar
+          <Animated.View style={estiloEntrada}>
+            <Animated.View style={estiloShake}>
+              <View className="rounded-3xl border border-cyan-100 bg-white p-6 shadow-lg">
+                <Text className="mb-1 text-2xl font-black text-slate-900">Iniciar sesión</Text>
+                <Text className="mb-5 text-sm text-slate-500">
+                  Accede a tus medidores y lecturas sincronizadas.
                 </Text>
-              )}
-            </Pressable>
 
-            <Pressable
-              onPress={() => router.push("/recuperar-clave")}
-              className="mt-5 items-center"
-            >
-              <Text className="text-teal-700">
-                ¿Olvidaste tu contraseña?
-              </Text>
-            </Pressable>
+                <Text className="mb-2 font-semibold text-slate-700">Correo electrónico</Text>
+                <AnimatedTextField
+                  containerClassName="mb-5"
+                  placeholder="correo@ejemplo.com"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  value={correo}
+                  onChangeText={setCorreo}
+                />
 
-            <Pressable
-              onPress={() => router.push("/crear-cuenta")}
-              className="mt-5 items-center"
-            >
-              <Text className="font-bold text-teal-700">
-                Crear cuenta
-              </Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-      </Animated.View>
-    </ScrollView>
+                <Text className="mb-2 font-semibold text-slate-700">Contraseña</Text>
+                <AnimatedTextField
+                  containerClassName="mb-6"
+                  placeholder="Contraseña"
+                  secureTextEntry
+                  value={clave}
+                  onChangeText={setClave}
+                  onSubmitEditing={ingresar}
+                />
+
+                <AquaButton titulo="Ingresar" onPress={ingresar} cargando={enviando} />
+
+                <Pressable
+                  onPress={() => router.push("/recuperar-clave")}
+                  className="mt-5 items-center"
+                >
+                  <Text className="font-semibold text-teal-700">¿Olvidaste tu contraseña?</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.push("/crear-cuenta")}
+                  className="mt-5 items-center"
+                >
+                  <Text className="font-black text-teal-700">Crear cuenta</Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }

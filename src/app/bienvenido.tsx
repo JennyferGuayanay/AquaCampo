@@ -2,7 +2,7 @@
 import { Redirect, router } from "expo-router";
 import {
   ActivityIndicator,
-  Pressable,
+  ScrollView,
   Text,
   View,
 } from "react-native";
@@ -11,6 +11,10 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 
+import { AquaButton } from "../components/AquaButton";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
+import { ConnectionStatus } from "../components/ConnectionStatus";
+import { VerificationCelebration } from "../components/VerificationCelebration";
 import { auth } from "../config/firebase";
 import { useAqua } from "../context/AquaContext";
 
@@ -37,16 +41,19 @@ export default function Bienvenido() {
   const nombre = auth.currentUser.displayName || "Usuario";
 
   return (
-    <View className="flex-1 items-center justify-center bg-sky-50 px-6">
-      <Animated.View entering={BounceIn.duration(700)}>
-        <View className="mb-6 items-center">
-          <Text className="text-6xl text-teal-600">✓</Text>
-        </View>
-      </Animated.View>
+    <View className="flex-1 bg-sky-50">
+      <AquaMotionBackground />
+      <ScrollView
+        contentContainerClassName="flex-grow items-center justify-center px-6 py-10"
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View entering={BounceIn.duration(700)}>
+          <VerificationCelebration />
+        </Animated.View>
 
-      <Animated.View entering={ZoomIn.delay(200).duration(500)}>
-        <View className="rounded-2xl bg-white p-6">
-          <Text className="text-center text-3xl font-bold text-teal-700">
+        <Animated.View entering={ZoomIn.delay(200).duration(500)} className="w-full">
+          <View className="rounded-3xl border border-cyan-100 bg-white p-6 shadow-lg">
+          <Text className="text-center text-3xl font-black text-slate-900">
             ¡Bienvenido!
           </Text>
 
@@ -59,16 +66,19 @@ export default function Bienvenido() {
             Ya puedes utilizar AquaCampo.
           </Text>
 
-          <Pressable
-            onPress={() => router.replace("/medidores")}
-            className="mt-7 items-center rounded-xl bg-teal-600 p-4"
-          >
-            <Text className="font-bold text-white">
-              Continuar a medidores
-            </Text>
-          </Pressable>
-        </View>
-      </Animated.View>
+          <View className="mt-5 items-center">
+            <ConnectionStatus />
+          </View>
+
+            <View className="mt-7">
+              <AquaButton
+                titulo="Continuar a medidores"
+                onPress={() => router.replace("/medidores")}
+              />
+            </View>
+          </View>
+        </Animated.View>
+      </ScrollView>
     </View>
   );
 }

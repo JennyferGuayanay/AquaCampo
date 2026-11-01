@@ -2,12 +2,12 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import {
@@ -20,6 +20,11 @@ import Animated, {
   FadeInUp,
 } from "react-native-reanimated";
 
+import { AnimatedTextField } from "../components/AnimatedTextField";
+import { AquaButton } from "../components/AquaButton";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
+import { ConnectionStatus } from "../components/ConnectionStatus";
+import { FieldTechnicianIllustration } from "../components/FieldTechnicianIllustration";
 import { auth } from "../config/firebase";
 
 export default function CrearCuenta() {
@@ -136,28 +141,43 @@ export default function CrearCuenta() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-sky-50"
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{
-        padding: 24,
-        paddingTop: 48,
-        paddingBottom: 48,
-      }}
-    >
-      <Animated.View entering={FadeInDown.duration(500)}>
-        <Text className="mb-6 text-center text-3xl font-bold text-teal-700">
-          Crear cuenta
-        </Text>
-      </Animated.View>
+    <View className="flex-1 bg-sky-50">
+      <AquaMotionBackground />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerClassName="px-6 py-12"
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View entering={FadeInDown.duration(650)}>
+            <View className="items-center">
+              <Text className="text-xs font-black tracking-[3px] text-teal-700">AQUACAMPO</Text>
+              <Text className="mt-2 text-center text-3xl font-black text-slate-900">Crear cuenta</Text>
+              <Text className="mt-2 text-center text-slate-600">
+                Prepara tu perfil para una jornada conectada.
+              </Text>
+              <View className="mt-4"><ConnectionStatus soloConexion /></View>
+            </View>
+          </Animated.View>
 
-      <Animated.View entering={FadeInUp.duration(500)}>
-        <View className="rounded-2xl bg-white p-5">
+          <Animated.View
+            entering={FadeInUp.delay(80).duration(600)}
+            className="my-4 overflow-hidden rounded-3xl border border-white/80 bg-white/70 px-3"
+          >
+            <FieldTechnicianIllustration />
+          </Animated.View>
+
+          <Animated.View entering={FadeInUp.delay(160).springify().damping(15)}>
+            <View className="rounded-3xl border border-cyan-100 bg-white p-5 shadow-lg">
           <Text className="mb-2 font-semibold">
             Nombre completo
           </Text>
-          <TextInput
-            className="mb-4 rounded-xl border border-slate-300 p-3"
+          <AnimatedTextField
+            containerClassName="mb-4"
             placeholder="Nombre y apellido"
             value={nombre}
             onChangeText={setNombre}
@@ -166,8 +186,8 @@ export default function CrearCuenta() {
           <Text className="mb-2 font-semibold">
             Correo electrónico
           </Text>
-          <TextInput
-            className="mb-4 rounded-xl border border-slate-300 p-3"
+          <AnimatedTextField
+            containerClassName="mb-4"
             placeholder="correo@ejemplo.com"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -178,8 +198,7 @@ export default function CrearCuenta() {
           <Text className="mb-2 font-semibold">
             Contraseña
           </Text>
-          <TextInput
-            className="rounded-xl border border-slate-300 p-3"
+          <AnimatedTextField
             placeholder="Contraseña"
             secureTextEntry
             value={clave}
@@ -228,27 +247,15 @@ export default function CrearCuenta() {
           <Text className="mb-2 font-semibold">
             Confirmar contraseña
           </Text>
-          <TextInput
-            className="mb-5 rounded-xl border border-slate-300 p-3"
+          <AnimatedTextField
+            containerClassName="mb-5"
             placeholder="Repetir contraseña"
             secureTextEntry
             value={confirmacion}
             onChangeText={setConfirmacion}
           />
 
-          <Pressable
-            onPress={registrar}
-            disabled={enviando}
-            className="items-center rounded-xl bg-teal-600 p-4"
-          >
-            {enviando ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text className="font-bold text-white">
-                Registrarme
-              </Text>
-            )}
-          </Pressable>
+          <AquaButton titulo="Registrarme" onPress={registrar} cargando={enviando} />
 
           <Pressable
             onPress={() => router.replace("/login")}
@@ -258,8 +265,10 @@ export default function CrearCuenta() {
               Volver al login
             </Text>
           </Pressable>
-        </View>
-      </Animated.View>
-    </ScrollView>
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }

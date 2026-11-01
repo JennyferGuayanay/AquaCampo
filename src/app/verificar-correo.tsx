@@ -19,6 +19,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { auth } from "../config/firebase";
+import { ConnectionStatus } from "../components/ConnectionStatus";
 import { useAqua } from "../context/AquaContext";
 
 export default function VerificarCorreo() {
@@ -104,13 +105,17 @@ export default function VerificarCorreo() {
   return (
     <View className="flex-1 justify-center bg-sky-50 px-6">
       <Animated.View entering={FadeInDown.duration(500)}>
-        <Text className="mb-4 text-center text-3xl font-bold text-teal-700">
-          Verifica tu correo
-        </Text>
+        <View className="mb-6 items-center">
+          <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-cyan-100">
+            <Text className="text-3xl font-black text-teal-700">@</Text>
+          </View>
+          <Text className="text-center text-3xl font-black text-slate-900">Verifica tu correo</Text>
+          <View className="mt-4"><ConnectionStatus soloConexion /></View>
+        </View>
       </Animated.View>
 
       <Animated.View entering={FadeInUp.duration(500)}>
-        <View className="rounded-2xl bg-white p-6">
+        <View className="rounded-3xl border border-cyan-100 bg-white p-6 shadow-sm">
           <Text className="mb-3 text-center text-base text-slate-700">
             Enviamos un enlace de verificación a:
           </Text>
@@ -127,7 +132,7 @@ export default function VerificarCorreo() {
           <Pressable
             onPress={comprobar}
             disabled={comprobando || reenviando}
-            className="items-center rounded-xl bg-teal-600 p-4"
+            className="min-h-14 items-center justify-center rounded-2xl bg-teal-700 p-4"
           >
             {comprobando ? (
               <ActivityIndicator color="white" />
