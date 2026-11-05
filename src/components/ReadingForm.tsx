@@ -197,44 +197,91 @@ export function ReadingForm({
   }
 
   return (
-    <View className="gap-4 rounded-3xl border border-cyan-100 bg-white p-5 shadow-sm">
-      <Text className="text-2xl font-black text-slate-900">Lectura de campo</Text>
-
-      <Text className="leading-5 text-slate-500">
-        Selecciona el estado observado antes de guardar.
-      </Text>
-
-      <Text className="text-base font-black text-slate-900">Ubicación del medidor</Text>
-      <LeafletMap
-        coordenadas={valor.ubicacion ?? null}
-        editable
-        conectado={conectado}
-        onCambiarCoordenadas={onCambiarUbicacion}
-      />
-      {estadoUbicacion === "cargando" && (
-        <Text className="leading-5 text-slate-500">Obteniendo ubicación GPS...</Text>
-      )}
-      {estadoUbicacion === "denegado" && (
-        <Text className="rounded-2xl border border-amber-200 bg-amber-50 p-3 leading-5 text-amber-900">
-          No se concedió el permiso GPS. Puedes colocar el marcador manualmente
-          en el mapa.
+    <View className="gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <View className="gap-1">
+        <Text className="text-2xl font-black tracking-tight text-aqua-marino">Lectura de campo</Text>
+        <Text className="text-sm leading-5 text-slate-600">
+          Selecciona el estado observado antes de guardar.
         </Text>
-      )}
-      {estadoUbicacion === "error" && (
-        <Text className="rounded-2xl border border-amber-200 bg-amber-50 p-3 leading-5 text-amber-900">
-          No se pudo obtener el GPS. Selecciona la ubicación manualmente en el
-          mapa.
-        </Text>
-      )}
-      {(estadoUbicacion === "denegado" || estadoUbicacion === "error") && (
-        <AquaButton
-          titulo="Intentar obtener GPS de nuevo"
-          onPress={onSolicitarUbicacion}
-          secundario
+      </View>
+
+      <View className="gap-3 rounded-3xl border border-aqua-celeste bg-aqua-fondo p-3">
+        <View className="flex-row flex-wrap items-center justify-between gap-2">
+          <Text className="text-base font-black text-aqua-marino">
+            Ubicación del medidor
+          </Text>
+          <View
+            accessibilityLabel={
+              estadoUbicacion === "disponible"
+                ? "Ubicación obtenida automáticamente por GPS"
+                : estadoUbicacion === "manual"
+                  ? "Ubicación seleccionada manualmente"
+                  : valor.ubicacion
+                    ? "Ubicación guardada"
+                    : "Ubicación pendiente"
+            }
+            className={`rounded-xl border px-3 py-1.5 ${
+              estadoUbicacion === "disponible"
+                ? "border-emerald-200 bg-emerald-50"
+                : estadoUbicacion === "manual"
+                  ? "border-aqua-celeste bg-white"
+                  : valor.ubicacion
+                    ? "border-slate-200 bg-white"
+                    : "border-amber-200 bg-amber-50"
+            }`}
+          >
+            <Text
+              className={`text-[10px] font-black tracking-wide ${
+                estadoUbicacion === "disponible"
+                  ? "text-emerald-800"
+                  : estadoUbicacion === "manual"
+                    ? "text-aqua-turquesa"
+                    : valor.ubicacion
+                      ? "text-slate-600"
+                      : "text-amber-900"
+              }`}
+            >
+              {estadoUbicacion === "disponible"
+                ? "GPS AUTOMÁTICO"
+                : estadoUbicacion === "manual"
+                  ? "SELECCIÓN MANUAL"
+                  : valor.ubicacion
+                    ? "UBICACIÓN GUARDADA"
+                    : "UBICACIÓN PENDIENTE"}
+            </Text>
+          </View>
+        </View>
+        <LeafletMap
+          coordenadas={valor.ubicacion ?? null}
+          editable
+          conectado={conectado}
+          onCambiarCoordenadas={onCambiarUbicacion}
         />
-      )}
+        {estadoUbicacion === "cargando" && (
+          <Text className="leading-5 text-slate-600">Obteniendo ubicación GPS...</Text>
+        )}
+        {estadoUbicacion === "denegado" && (
+          <Text className="rounded-2xl border border-amber-200 bg-amber-50 p-3 leading-5 text-amber-900">
+            No se concedió el permiso GPS. Puedes colocar el marcador manualmente
+            en el mapa.
+          </Text>
+        )}
+        {estadoUbicacion === "error" && (
+          <Text className="rounded-2xl border border-amber-200 bg-amber-50 p-3 leading-5 text-amber-900">
+            No se pudo obtener el GPS. Selecciona la ubicación manualmente en el
+            mapa.
+          </Text>
+        )}
+        {(estadoUbicacion === "denegado" || estadoUbicacion === "error") && (
+          <AquaButton
+            titulo="Intentar obtener GPS de nuevo"
+            onPress={onSolicitarUbicacion}
+            secundario
+          />
+        )}
+      </View>
 
-      <View className="flex-row gap-2">
+      <View className="flex-row flex-wrap gap-2">
         {(["normal", "inaccesible", "dañado"] as EstadoMedidor[]).map(
           (estado) => (
             <TouchableOpacity
@@ -245,16 +292,16 @@ export function ReadingForm({
                   confirmado: false,
                 })
               }
-              className={`flex-1 items-center rounded-xl border py-3 ${
+              className={`min-w-[30%] flex-1 items-center rounded-2xl border py-3 ${
                 valor.estado === estado
-                  ? "border-teal-700 bg-cyan-100"
-                  : "border-cyan-100 bg-white"
+                  ? "border-aqua-turquesa bg-aqua-celeste"
+                  : "border-slate-200 bg-white"
               }`}
             >
               <Text
                 className={`capitalize ${
                   valor.estado === estado
-                    ? "font-black text-slate-900"
+                    ? "font-black text-aqua-marino"
                     : "text-slate-500"
                 }`}
               >
@@ -267,7 +314,7 @@ export function ReadingForm({
 
       {valor.estado !== "inaccesible" && (
         <TextInput
-          className="rounded-2xl border border-cyan-100 bg-slate-50 p-4 text-base text-slate-800"
+          className="min-h-14 rounded-2xl border border-slate-200 bg-aqua-fondo px-4 py-3.5 text-base text-aqua-marino"
           placeholder="Lectura actual en m³"
           placeholderTextColor="#688391"
           keyboardType="numeric"
@@ -283,7 +330,7 @@ export function ReadingForm({
 
       {valor.estado === "inaccesible" && (
         <TextInput
-          className="rounded-2xl border border-cyan-100 bg-slate-50 p-4 text-base text-slate-800"
+          className="min-h-14 rounded-2xl border border-slate-200 bg-aqua-fondo px-4 py-3.5 text-base text-aqua-marino"
           placeholder="Motivo por el que no fue accesible"
           placeholderTextColor="#688391"
           value={valor.motivo}
@@ -293,7 +340,7 @@ export function ReadingForm({
 
       {valor.estado === "dañado" && (
         <TextInput
-          className="min-h-24 rounded-2xl border border-cyan-100 bg-slate-50 p-4 text-base text-slate-800"
+          className="min-h-24 rounded-2xl border border-slate-200 bg-aqua-fondo px-4 py-3.5 text-base text-aqua-marino"
           placeholder="Descripción del daño"
           placeholderTextColor="#688391"
           value={valor.descripcion}
@@ -304,7 +351,7 @@ export function ReadingForm({
 
       {/* Mostrar consumo cuando existe lectura anterior */}
       {consumo !== null && (
-        <View className="items-center rounded-2xl bg-slate-900 p-4">
+        <View className="items-center rounded-3xl bg-aqua-marino p-4">
           <Text className="text-[11px] font-extrabold tracking-widest text-cyan-200">
             CONSUMO CALCULADO
           </Text>

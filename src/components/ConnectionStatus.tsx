@@ -48,12 +48,12 @@ export function ConnectionStatus({ soloConexion = false }: ConnectionStatusProps
     backgroundColor: interpolateColor(
       conexion.get(),
       [0, 1],
-      ["#FEF2F2", "#ECFDF5"],
+      ["#FFF4E5", "#E6F4EF"],
     ),
     borderColor: interpolateColor(
       conexion.get(),
       [0, 1],
-      ["#FECACA", "#A7F3D0"],
+      ["#F0D8B7", "#B9DED0"],
     ),
     transform: [{ scale: escala.get() }],
   }));
@@ -63,28 +63,28 @@ export function ConnectionStatus({ soloConexion = false }: ConnectionStatusProps
       <Animated.View
         accessibilityLabel={estado}
         style={estiloEstado}
-        className="flex-row items-center gap-2 rounded-full border px-3 py-2"
+        className="flex-row items-center gap-2 rounded-xl border px-3 py-2"
       >
         {sincronizando ? (
-          <ActivityIndicator size="small" color="#087C98" />
+          <ActivityIndicator size="small" color="#087E91" />
         ) : (
           <View
             className={`h-2.5 w-2.5 rounded-full ${
-              conectado ? "bg-emerald-600" : "bg-red-600"
+              conectado ? "bg-emerald-700" : "bg-amber-600"
             }`}
           />
         )}
-        <Text className="text-xs font-extrabold text-slate-800">{estado}</Text>
+        <Text className="text-xs font-extrabold text-aqua-marino">{estado}</Text>
       </Animated.View>
 
       {!soloConexion && (
-        <Text className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-extrabold text-slate-800">
+        <Text className="rounded-xl border border-aqua-celeste bg-aqua-celeste px-3 py-2 text-xs font-extrabold text-aqua-marino">
           Pendientes {pendientes}
         </Text>
       )}
 
       {!soloConexion && conflictos > 0 && (
-        <Text className="rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-extrabold text-amber-900">
+        <Text className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-extrabold text-amber-900">
           Conflictos {conflictos}
         </Text>
       )}

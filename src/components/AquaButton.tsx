@@ -37,8 +37,8 @@ export function AquaButton({
   const variante = peligro
     ? "border-red-700 bg-red-700"
     : secundario
-      ? "border-teal-600 bg-cyan-50"
-      : "border-teal-700 bg-teal-700";
+      ? "border-aqua-celeste bg-aqua-celeste"
+      : "border-aqua-marino bg-aqua-marino";
   const escala = useSharedValue(1);
   const estiloAnimado = useAnimatedStyle(() => ({
     transform: [{ scale: escala.get() }],
@@ -64,18 +64,18 @@ export function AquaButton({
         onPress={onPress}
         onPressIn={() => cambiarEscala(0.94)}
         onPressOut={() => cambiarEscala(1)}
-        className={`min-h-14 flex-row items-center justify-center gap-2 rounded-2xl border px-5 py-4 ${variante} ${
-          inactivo ? "opacity-50" : ""
+        className={`min-h-14 flex-row items-center justify-center gap-2 rounded-2xl border px-4 py-3.5 ${variante} ${
+          inactivo ? "opacity-55" : ""
         }`}
       >
         {cargando ? (
-          <ActivityIndicator color={secundario && !peligro ? "#087C98" : "#FFFFFF"} />
+          <ActivityIndicator color={secundario && !peligro ? "#102C46" : "#FFFFFF"} />
         ) : (
           icono
         )}
         <Text
-          className={`shrink text-center text-base font-extrabold ${
-            secundario && !peligro ? "text-slate-900" : "text-white"
+          className={`shrink text-center text-base font-extrabold leading-5 ${
+            secundario && !peligro ? "text-aqua-marino" : "text-white"
           }`}
         >
           {titulo}

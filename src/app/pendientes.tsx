@@ -7,6 +7,7 @@ import { AquaButton } from "../components/AquaButton";
 import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 import { LeafletMap } from "../components/LeafletMap";
+import { SyncSuccessAnimation } from "../components/SyncSuccessAnimation";
 import { useAqua } from "../context/AquaContext";
 import type { EstadoSync, Lectura } from "../types/models";
 import { sonCoordenadasValidas } from "../utils/rules";
@@ -20,7 +21,7 @@ const etiquetas: Record<EstadoSync, string> = {
 };
 
 const barras: Record<EstadoSync, string> = {
-  pendiente: "bg-sky-500",
+  pendiente: "bg-aqua-turquesa",
   enviando: "bg-blue-700",
   incierto: "bg-amber-500",
   conflicto: "bg-red-600",
@@ -28,11 +29,19 @@ const barras: Record<EstadoSync, string> = {
 };
 
 const insignias: Record<EstadoSync, string> = {
-  pendiente: "bg-cyan-100",
-  enviando: "bg-blue-100",
-  incierto: "bg-amber-100",
-  conflicto: "bg-red-100",
-  enviado: "bg-emerald-100",
+  pendiente: "bg-aqua-celeste",
+  enviando: "bg-blue-50",
+  incierto: "bg-amber-50",
+  conflicto: "bg-red-50",
+  enviado: "bg-emerald-50",
+};
+
+const textoInsignias: Record<EstadoSync, string> = {
+  pendiente: "text-aqua-marino",
+  enviando: "text-blue-900",
+  incierto: "text-amber-900",
+  conflicto: "text-red-900",
+  enviado: "text-emerald-900",
 };
 
 function permiteEdicion(lectura: Lectura) {
@@ -54,6 +63,7 @@ export default function Pendientes() {
     sincronizar,
   } = useAqua();
   const [mapaAbierto, setMapaAbierto] = useState<string | null>(null);
+  const [mostrarExitoSync, setMostrarExitoSync] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -62,7 +72,7 @@ export default function Pendientes() {
   );
 
   if (cargando) {
-    return <View className="flex-1 items-center justify-center bg-sky-50"><ActivityIndicator size="large" color="#087C98" /></View>;
+    return <View className="flex-1 items-center justify-center bg-aqua-fondo"><ActivityIndicator size="large" color="#087E91" /></View>;
   }
   if (!sesion) return <Redirect href="/login" />;
 
@@ -73,6 +83,15 @@ export default function Pendientes() {
     }
     const resultado = await sincronizar();
     if (!resultado) return;
+    const sincronizacionCompleta =
+      resultado.errores === 0 &&
+      resultado.conflictos === 0 &&
+      resultado.inciertos === 0 &&
+      resultado.enviados + resultado.verificacion > 0;
+    if (sincronizacionCompleta) {
+      setMostrarExitoSync(true);
+      return;
+    }
     Alert.alert(
       "Sincronización terminada",
       `Confirmadas: ${resultado.enviados}\n` +
@@ -84,15 +103,15 @@ export default function Pendientes() {
   }
 
   return (
-    <View className="flex-1 bg-sky-50">
+    <View className="flex-1 bg-aqua-fondo">
       <AquaMotionBackground />
       <ScrollView
         className="flex-1"
-        contentContainerClassName="gap-4 p-5 pb-12"
+        contentContainerClassName="gap-4 px-4 py-5 pb-12"
         showsVerticalScrollIndicator={false}
       >
-      <Animated.View entering={FadeInDown.duration(450)} className="gap-3 rounded-3xl bg-slate-900 p-5">
-        <Text className="text-2xl font-black text-white">Estado de la jornada</Text>
+      <Animated.View entering={FadeInDown.duration(450)} className="gap-3 rounded-3xl border border-white/10 bg-aqua-marino p-5">
+        <Text className="text-2xl font-black tracking-tight text-white">Estado de la jornada</Text>
         <ConnectionStatus />
         <Text className="mt-1 text-sm leading-5 text-cyan-100">
           Los envíos inciertos se verifican en MockAPI por su identificador local antes de volver a intentarse.
@@ -100,8 +119,8 @@ export default function Pendientes() {
       </Animated.View>
 
       {lecturas.length === 0 && (
-        <Animated.View entering={ZoomIn.duration(400)} className="items-center gap-2 rounded-3xl border border-cyan-100 bg-white p-6">
-          <Text className="text-xl font-black text-slate-900">Aún no hay lecturas</Text>
+        <Animated.View entering={ZoomIn.duration(400)} className="items-center gap-2 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <Text className="text-xl font-black text-aqua-marino">Aún no hay lecturas</Text>
           <Text className="text-center text-slate-500">Registra un medidor desde el panel principal.</Text>
         </Animated.View>
       )}
@@ -109,11 +128,11 @@ export default function Pendientes() {
       {lecturas.length > 0 && (
         <View className="mt-1 flex-row items-center justify-between px-1">
           <View>
-            <Text className="text-[10px] font-black tracking-widest text-teal-700">REGISTROS DE CAMPO</Text>
-            <Text className="mt-1 text-xl font-black text-slate-900">Lecturas registradas</Text>
+            <Text className="text-[10px] font-black tracking-[1.5px] text-aqua-turquesa">REGISTROS DE CAMPO</Text>
+            <Text className="mt-1 text-xl font-black text-aqua-marino">Lecturas registradas</Text>
           </View>
-          <View className="h-9 min-w-9 items-center justify-center rounded-full bg-cyan-200">
-            <Text className="font-black text-slate-900">{lecturas.length}</Text>
+          <View className="h-9 min-w-9 items-center justify-center rounded-2xl bg-aqua-celeste px-2">
+            <Text className="font-black text-aqua-marino">{lecturas.length}</Text>
           </View>
         </View>
       )}
@@ -122,36 +141,36 @@ export default function Pendientes() {
         <Animated.View
           entering={FadeInUp.delay(Math.min(indice, 4) * 70).duration(400)}
           key={lectura.idLocal}
-          className="overflow-hidden rounded-3xl border border-cyan-100 bg-white p-5 shadow-sm"
+          className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
         >
-          <View className={`-mx-5 -mt-5 mb-4 h-1.5 ${barras[lectura.estadoSync]}`} />
+          <View className={`-mx-4 -mt-4 mb-4 h-1 ${barras[lectura.estadoSync]}`} />
           <View className="flex-row flex-wrap items-center gap-3">
             <View className="min-w-0 flex-1">
-              <Text className="shrink text-xl font-black text-slate-900">{lectura.codigoMedidor}</Text>
+              <Text className="shrink text-xl font-black tracking-tight text-aqua-marino">{lectura.codigoMedidor}</Text>
               <Text className="text-xs text-slate-500">{lectura.mes}</Text>
             </View>
-            <View className={`max-w-40 shrink rounded-xl px-3 py-2 ${insignias[lectura.estadoSync]}`}>
-              <Text className="text-center text-[11px] font-black text-slate-900">{etiquetas[lectura.estadoSync]}</Text>
+            <View className={`max-w-40 shrink rounded-xl border border-slate-100 px-3 py-2 ${insignias[lectura.estadoSync]}`}>
+              <Text className={`text-center text-[11px] font-black ${textoInsignias[lectura.estadoSync]}`}>{etiquetas[lectura.estadoSync]}</Text>
             </View>
           </View>
-          <View className="mt-4 flex-row gap-2">
-            <View className="min-w-0 flex-1 gap-1 rounded-xl bg-slate-50 px-2 py-3">
+          <View className="mt-4 flex-row flex-wrap gap-2">
+            <View className="min-w-[30%] flex-1 gap-1 rounded-2xl border border-slate-100 bg-aqua-fondo px-3 py-3">
               <Text className="text-[10px] font-bold text-slate-500">Estado</Text>
-              <Text className="shrink text-sm font-black capitalize text-slate-900">{lectura.estadoMedidor}</Text>
+              <Text className="shrink text-sm font-black capitalize text-aqua-marino">{lectura.estadoMedidor}</Text>
             </View>
-            <View className="min-w-0 flex-1 gap-1 rounded-xl bg-slate-50 px-2 py-3">
+            <View className="min-w-[30%] flex-1 gap-1 rounded-2xl border border-slate-100 bg-aqua-fondo px-3 py-3">
               <Text className="text-[10px] font-bold text-slate-500">Lectura</Text>
-              <Text className="shrink text-sm font-black text-slate-900">{lectura.lecturaActual ?? "No disponible"}</Text>
+              <Text className="shrink text-sm font-black text-aqua-marino">{lectura.lecturaActual ?? "No disponible"}</Text>
             </View>
-            <View className="min-w-0 flex-1 gap-1 rounded-xl bg-slate-50 px-2 py-3">
+            <View className="min-w-[30%] flex-1 gap-1 rounded-2xl border border-slate-100 bg-aqua-fondo px-3 py-3">
               <Text className="text-[10px] font-bold text-slate-500">Consumo</Text>
-              <Text className="shrink text-sm font-black text-slate-900">{lectura.consumo === null ? "Pendiente" : `${lectura.consumo} m³`}</Text>
+              <Text className="shrink text-sm font-black text-aqua-marino">{lectura.consumo === null ? "Pendiente" : `${lectura.consumo} m³`}</Text>
             </View>
           </View>
           {sonCoordenadasValidas(lectura.ubicacion) ? (
             <>
               <AquaButton
-                titulo={mapaAbierto === lectura.idLocal ? "Ocultar ubicación" : "Ver ubicación"}
+                titulo={mapaAbierto === lectura.idLocal ? "Ocultar ubicación" : "Ver ubicación guardada"}
                 onPress={() =>
                   setMapaAbierto((actual) =>
                     actual === lectura.idLocal ? null : lectura.idLocal,
@@ -163,7 +182,7 @@ export default function Pendientes() {
                 <LeafletMap
                   coordenadas={lectura.ubicacion}
                   conectado={conectado}
-                  altura={190}
+                  altura={220}
                 />
               )}
             </>
@@ -206,6 +225,9 @@ export default function Pendientes() {
       <AquaButton titulo="Actualizar y sincronizar" onPress={ejecutarSync} cargando={sincronizando} />
       <AquaButton titulo="Volver al panel" onPress={() => router.dismissTo("/medidores")} secundario />
       </ScrollView>
+      {mostrarExitoSync && (
+        <SyncSuccessAnimation onDismiss={() => setMostrarExitoSync(false)} />
+      )}
     </View>
   );
 }

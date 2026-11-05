@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -14,6 +15,7 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { AquaButton } from "../components/AquaButton";
 import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
+import { LottieStateAnimation } from "../components/LottieStateAnimation";
 import { MeterCard } from "../components/MeterCard";
 import { ReadingForm } from "../components/ReadingForm";
 import { useAqua } from "../context/AquaContext";
@@ -54,15 +56,17 @@ export default function Registro() {
   const recuperar = parametros.borrador === "1";
   const { sesion, cargando, conectado, actualizar } = useAqua();
   const [codigoActual, setCodigoActual] = useState(codigo);
-  const { medidor } = useMedidor(codigoActual);
+  const { medidor, cargando: cargandoMedidor } = useMedidor(codigoActual);
   const [valor, setValor] = useState<Borrador | null>(null);
   const [lecturaAnterior, setLecturaAnterior] = useState<Lectura | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [lecturaGuardada, setLecturaGuardada] = useState(false);
   const [listo, setListo] = useState(false);
   const [estadoUbicacion, setEstadoUbicacion] = useState<
     "inactivo" | "cargando" | "denegado" | "error" | "disponible" | "manual"
   >("inactivo");
   const guardado = useRef(false);
+  const finalizandoGuardado = useRef(false);
   const solicitudUbicacion = useRef(false);
 
   const solicitarUbicacion = useCallback(async () => {
@@ -208,10 +212,7 @@ export default function Registro() {
     guardado.current = true;
     try {
       await guardarLectura(lectura);
-      await borrarBorrador(sesion);
-      await actualizar();
-      Alert.alert("Lectura guardada", "El registro quedó protegido en este dispositivo.");
-      router.replace("/pendientes");
+      setLecturaGuardada(true);
     } catch (error) {
       guardado.current = false;
       Alert.alert(
@@ -220,6 +221,30 @@ export default function Registro() {
       );
     } finally {
       setGuardando(false);
+    }
+  }
+
+  async function finalizarGuardado() {
+    if (finalizandoGuardado.current) return;
+    finalizandoGuardado.current = true;
+
+    if (!sesion) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      await borrarBorrador(sesion);
+      await actualizar();
+      router.replace("/pendientes");
+    } catch (error) {
+      Alert.alert(
+        "Lectura guardada",
+        `La lectura y sus coordenadas se guardaron correctamente, pero no se pudo actualizar la lista: ${
+          error instanceof Error ? error.message : "Error inesperado."
+        }`,
+        [{ text: "Ir a lecturas", onPress: () => router.replace("/pendientes") }],
+      );
     }
   }
 
@@ -245,70 +270,102 @@ export default function Registro() {
   }
 
   return (
-    <View className="flex-1 bg-sky-50">
-      <AquaMotionBackground />
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="gap-4 p-5 pb-12"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-      <Animated.View entering={FadeInDown.duration(450)} className="gap-2">
-        <Text className="text-xs font-black tracking-widest text-teal-700">CAPTURA EN CAMPO</Text>
-        <Text className="text-3xl font-black text-slate-900">Registrar lectura</Text>
-        <ConnectionStatus />
-      </Animated.View>
-      {medidor ? (
-        <Animated.View entering={FadeInUp.delay(80).duration(450)}>
-          <MeterCard medidor={medidor} />
+    <>
+      <View className="flex-1 bg-aqua-fondo">
+        <AquaMotionBackground />
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="gap-4 px-4 py-5 pb-12"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+        <Animated.View entering={FadeInDown.duration(450)} className="gap-2">
+          <Text className="text-xs font-black tracking-widest text-teal-700">CAPTURA EN CAMPO</Text>
+          <Text className="text-3xl font-black text-slate-900">Registrar lectura</Text>
+          <ConnectionStatus />
         </Animated.View>
-      ) : (
-        <View className="gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <Text className="text-base font-black text-amber-900">Pendiente de verificación</Text>
-          <Text className="leading-5 text-amber-900">
-            No hay datos previos disponibles. Al reconectar se validará el medidor y se revisará el consumo.
-          </Text>
-        </View>
-      )}
-      {lecturaAnterior?.conflicto?.tipo === "medidor_no_encontrado" && (
-        <View className="gap-3 rounded-2xl border border-cyan-100 bg-white p-4">
-          <Text className="text-base font-black text-amber-900">Corregir código del medidor</Text>
-          <Text className="leading-5 text-slate-600">
-            El código anterior no existe en MockAPI. Ingresa el código correcto antes de guardar.
-          </Text>
-          <TextInput
-            autoCapitalize="characters"
-            maxLength={10}
-            placeholder="MED-123456"
-            placeholderTextColor="#688391"
-            className="rounded-2xl border border-cyan-100 bg-slate-50 p-4 font-black tracking-widest text-slate-900"
-            value={codigoActual}
-            onChangeText={(nuevoCodigo) => {
-              const normalizado = nuevoCodigo.toUpperCase();
-              setCodigoActual(normalizado);
-              setValor((actual) => actual ? { ...actual, codigo: normalizado } : actual);
+        {cargandoMedidor ? (
+          <View className="items-center gap-1 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <LottieStateAnimation variant="loading" size={104} />
+            <Text className="text-center text-sm font-medium leading-5 text-slate-600">
+              Consultando información del medidor...
+            </Text>
+          </View>
+        ) : medidor ? (
+          <Animated.View entering={FadeInUp.delay(80).duration(450)}>
+            <MeterCard medidor={medidor} />
+          </Animated.View>
+        ) : (
+          <View className="gap-2 rounded-3xl border border-amber-200 bg-amber-50 p-4">
+            <Text className="text-base font-black text-amber-900">Pendiente de verificación</Text>
+            <Text className="leading-5 text-amber-900">
+              No hay datos previos disponibles. Al reconectar se validará el medidor y se revisará el consumo.
+            </Text>
+          </View>
+        )}
+        {lecturaAnterior?.conflicto?.tipo === "medidor_no_encontrado" && (
+          <View className="gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <Text className="text-base font-black text-aqua-marino">Corregir código del medidor</Text>
+            <Text className="leading-5 text-slate-600">
+              El código anterior no existe en MockAPI. Ingresa el código correcto antes de guardar.
+            </Text>
+            <TextInput
+              autoCapitalize="characters"
+              maxLength={10}
+              placeholder="MED-123456"
+              placeholderTextColor="#688391"
+              className="min-h-14 rounded-2xl border border-slate-200 bg-aqua-fondo px-4 py-3.5 font-black tracking-widest text-aqua-marino"
+              value={codigoActual}
+              onChangeText={(nuevoCodigo) => {
+                const normalizado = nuevoCodigo.toUpperCase();
+                setCodigoActual(normalizado);
+                setValor((actual) => actual ? { ...actual, codigo: normalizado } : actual);
+              }}
+            />
+          </View>
+        )}
+        {valor && (
+          <ReadingForm
+            medidor={medidor}
+            valor={valor}
+            conectado={conectado}
+            estadoUbicacion={estadoUbicacion}
+            onChange={setValor}
+            onCambiarUbicacion={(ubicacion) => {
+              setValor((actual) => actual ? { ...actual, ubicacion } : actual);
+              setEstadoUbicacion("manual");
             }}
+            onSolicitarUbicacion={() => void solicitarUbicacion()}
+            onGuardar={guardar}
+            guardando={guardando}
           />
+        )}
+        <AquaButton titulo="Descartar borrador y salir" onPress={descartar} secundario />
+        </ScrollView>
+      </View>
+      <Modal
+        visible={lecturaGuardada}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => undefined}
+      >
+        <View className="flex-1 items-center justify-center bg-aqua-marino/70 p-5">
+          <View className="w-full max-w-sm items-center gap-2 rounded-3xl border border-slate-200 bg-white px-5 pb-7 pt-5 shadow-lg">
+            <LottieStateAnimation
+              variant="success"
+              size={148}
+              onFinish={() => void finalizarGuardado()}
+            />
+            <Text className="text-center text-xl font-black tracking-tight text-aqua-marino">
+              Lectura guardada correctamente
+            </Text>
+            <Text className="text-center leading-5 text-slate-500">
+              La lectura y la ubicación quedaron guardadas en este dispositivo.
+            </Text>
+          </View>
         </View>
-      )}
-      {valor && (
-        <ReadingForm
-          medidor={medidor}
-          valor={valor}
-          conectado={conectado}
-          estadoUbicacion={estadoUbicacion}
-          onChange={setValor}
-          onCambiarUbicacion={(ubicacion) => {
-            setValor((actual) => actual ? { ...actual, ubicacion } : actual);
-            setEstadoUbicacion("manual");
-          }}
-          onSolicitarUbicacion={() => void solicitarUbicacion()}
-          onGuardar={guardar}
-          guardando={guardando}
-        />
-      )}
-      <AquaButton titulo="Descartar borrador y salir" onPress={descartar} secundario />
-      </ScrollView>
-    </View>
+      </Modal>
+    </>
   );
 }

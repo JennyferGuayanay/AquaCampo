@@ -40,9 +40,9 @@ export function AnimatedStatCard({ etiqueta, valor, demora }: AnimatedStatCardPr
   return (
     <Animated.View
       entering={FadeInUp.delay(demora).springify().damping(14)}
-      className="min-w-0 flex-1 items-center rounded-2xl border border-cyan-100 bg-white p-4 shadow-sm"
+      className="min-w-0 flex-1 items-center rounded-3xl border border-slate-200 bg-white p-3.5 shadow-sm"
     >
-      <Text className="text-3xl font-black text-slate-900">{visible}</Text>
+      <Text className="text-3xl font-black tracking-tight text-aqua-marino">{visible}</Text>
       <Text
         adjustsFontSizeToFit
         minimumFontScale={0.8}
@@ -72,8 +72,8 @@ export function AnimatedProgressBar({ porcentaje }: { porcentaje: number }) {
   }));
 
   return (
-    <View className="mt-5 h-3 overflow-hidden rounded-full bg-cyan-100">
-      <Animated.View style={estilo} className="h-full rounded-full bg-teal-600" />
+    <View className="mt-5 h-2.5 overflow-hidden rounded-full bg-aqua-celeste">
+    <Animated.View style={estilo} className="h-full rounded-full bg-aqua-turquesa" />
     </View>
   );
 }

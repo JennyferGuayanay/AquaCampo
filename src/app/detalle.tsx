@@ -5,6 +5,7 @@ import Animated, { FadeInDown, FadeInUp, ZoomIn } from "react-native-reanimated"
 import { AquaButton } from "../components/AquaButton";
 import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { ConnectionStatus } from "../components/ConnectionStatus";
+import { LottieStateAnimation } from "../components/LottieStateAnimation";
 import { MeterCard } from "../components/MeterCard";
 import { useAqua } from "../context/AquaContext";
 import { useMedidor } from "../hooks/useMedidor";
@@ -18,7 +19,7 @@ export default function Detalle() {
 
   if (cargandoSesion) {
     return (
-      <View className="flex-1 items-center justify-center bg-sky-50">
+      <View className="flex-1 items-center justify-center bg-aqua-fondo">
         <AquaMotionBackground />
         <ActivityIndicator size="large" color="#087C98" />
       </View>
@@ -39,7 +40,7 @@ export default function Detalle() {
   }
 
   return (
-    <View className="flex-1 bg-sky-50">
+    <View className="flex-1 bg-aqua-fondo">
       <AquaMotionBackground />
       <ScrollView
         className="flex-1"
@@ -55,14 +56,14 @@ export default function Detalle() {
       </Animated.View>
 
       {cargando ? (
-        <View className="min-h-64 flex-1 items-center justify-center gap-4">
-          <ActivityIndicator size="large" color="#087C98" />
-          <Text className="text-center leading-6 text-slate-500">
+        <View className="min-h-64 flex-1 items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white px-5 py-7 shadow-sm">
+          <LottieStateAnimation variant="loading" size={152} />
+          <Text className="text-center text-base font-semibold leading-6 text-slate-600">
             Consultando información del medidor...
           </Text>
         </View>
       ) : medidor ? (
-        <Animated.View entering={FadeInUp.delay(100).duration(450)} className="gap-4">
+        <Animated.View entering={FadeInUp.delay(100).duration(450)} className="gap-5">
           <MeterCard medidor={medidor} />
           <AquaButton
             titulo="Registrar lectura"
@@ -75,9 +76,9 @@ export default function Detalle() {
       ) : (
         <Animated.View
           entering={ZoomIn.duration(400)}
-          className="gap-4 rounded-3xl border border-cyan-100 bg-white p-6 shadow-sm"
+          className="gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
         >
-          <Text className="text-center text-2xl font-black text-slate-900">
+          <Text className="text-center text-2xl font-black tracking-tight text-aqua-marino">
             {conectado ? "Medidor no encontrado" : "Registro sin datos previos"}
           </Text>
           <Text className="text-center leading-6 text-slate-500">{error}</Text>

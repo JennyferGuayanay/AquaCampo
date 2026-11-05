@@ -1,17 +1,17 @@
 export const AquaColores = {
-  fondo: "#F0FAFC",
-  fondoProfundo: "#DDF4F8",
-  celeste: "#B9EAF2",
-  celesteSuave: "#E9F8FA",
-  azul: "#46B9DC",
-  turquesa: "#12A8AD",
-  turquesaOscuro: "#087C98",
-  marino: "#12344A",
-  marinoProfundo: "#0A2638",
-  texto: "#183C50",
-  textoSuave: "#688391",
+  fondo: "#F7FAFC",
+  fondoProfundo: "#D9F2F5",
+  celeste: "#D9F2F5",
+  celesteSuave: "#EDF8F9",
+  azul: "#4BAFC0",
+  turquesa: "#1594A3",
+  turquesaOscuro: "#087E91",
+  marino: "#102C46",
+  marinoProfundo: "#0B2035",
+  texto: "#18344D",
+  textoSuave: "#607789",
   blanco: "#FFFFFF",
-  superficie: "#F8FCFD",
+  superficie: "#FFFFFF",
   aviso: "#FFF1D6",
   avisoTexto: "#714B0A",
   peligro: "#B53A48",
@@ -25,11 +25,11 @@ export const AquaColores = {
 };
 
 export const AquaSombra = {
-  shadowColor: "#123E52",
-  shadowOffset: { width: 0, height: 7 },
-  shadowOpacity: 0.09,
-  shadowRadius: 16,
-  elevation: 4,
+  shadowColor: "#102C46",
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.07,
+  shadowRadius: 12,
+  elevation: 3,
 };
 
 export const AquaRadios = {

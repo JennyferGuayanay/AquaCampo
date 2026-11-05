@@ -171,7 +171,7 @@ export default function Medidores() {
 
   if (cargando) {
     return (
-      <View className="flex-1 items-center justify-center bg-sky-50">
+      <View className="flex-1 items-center justify-center bg-aqua-fondo">
         <ActivityIndicator
           size="large"
           color="#0d9488"
@@ -185,7 +185,7 @@ export default function Medidores() {
   }
 
   return (
-    <View className="flex-1 bg-sky-50">
+    <View className="flex-1 bg-aqua-fondo">
       <WaterMeterPhotoBackground />
       <ScrollView
       className="flex-1 bg-transparent"
@@ -195,18 +195,18 @@ export default function Medidores() {
     >
       {/* ENCABEZADO */}
       <Animated.View entering={FadeInDown.duration(500)}>
-        <View className="overflow-hidden bg-slate-900 px-6 pb-7 pt-12">
-          <View className="absolute -right-12 -top-10 h-40 w-40 rounded-full bg-teal-500/20" />
-          <View className="absolute -right-4 top-20 h-20 w-20 rounded-full bg-sky-400/10" />
+        <View className="overflow-hidden bg-aqua-marino px-5 pb-7 pt-12">
+          <View className="absolute -right-12 -top-10 h-40 w-40 rounded-full bg-aqua-turquesa/15" />
+          <View className="absolute -right-4 top-20 h-20 w-20 rounded-full bg-aqua-celeste/10" />
           <View className="flex-row items-center gap-3">
-            <View className="h-12 w-12 items-center justify-center rounded-2xl bg-teal-600">
+            <View className="h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-white/10">
               <Text className="text-2xl font-black text-white">A</Text>
             </View>
             <View>
-              <Text className="text-xs font-extrabold tracking-widest text-cyan-200">
+              <Text className="text-xs font-extrabold tracking-[2px] text-aqua-celeste">
                 JORNADA DE CAMPO
               </Text>
-              <Text className="text-3xl font-black text-white">AquaCampo</Text>
+              <Text className="text-3xl font-black tracking-tight text-white">AquaCampo</Text>
             </View>
           </View>
 
@@ -218,13 +218,13 @@ export default function Medidores() {
           >
             <UserAvatar uri={fotoPerfilUri} iniciales={iniciales} />
             <View className="min-w-0 flex-1">
-              <Text className="text-sm text-cyan-100">Bienvenido</Text>
+              <Text className="text-sm text-aqua-celeste">Bienvenido</Text>
               <Text className="text-xl font-black text-white" numberOfLines={1}>{nombre}</Text>
             </View>
             <SymbolView
               name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" }}
               size={22}
-              tintColor="#a5f3fc"
+              tintColor="#D9F2F5"
             />
           </Pressable>
 
@@ -245,10 +245,10 @@ export default function Medidores() {
           onPress={() => router.push("/editar-perfil")}
           onPressIn={() => animarPerfil(0.96)}
           onPressOut={() => animarPerfil(1)}
-          className="min-h-24 flex-row items-center gap-4 overflow-hidden rounded-3xl bg-teal-700 p-4 shadow-lg"
+          className="min-h-24 flex-row items-center gap-4 overflow-hidden rounded-3xl border border-white/10 bg-aqua-turquesa p-4 shadow-md"
         >
-          <View className="absolute -right-5 -top-9 h-28 w-28 rounded-full bg-slate-900/25" />
-          <View className="absolute -bottom-8 right-16 h-20 w-20 rounded-full bg-cyan-200/15" />
+          <View className="absolute -right-5 -top-9 h-28 w-28 rounded-full bg-aqua-marino/15" />
+          <View className="absolute -bottom-8 right-16 h-20 w-20 rounded-full bg-white/10" />
           <UserAvatar uri={fotoPerfilUri} iniciales={iniciales} tamano="tarjeta" />
           <View className="min-w-0 flex-1">
             <Text className="text-xl font-black text-white">Mi perfil</Text>
@@ -256,7 +256,7 @@ export default function Medidores() {
               Cuenta, seguridad y datos personales
             </Text>
           </View>
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-900/30">
+          <View           className="h-10 w-10 items-center justify-center rounded-2xl bg-aqua-marino/25">
             <SymbolView
               name={{ ios: "arrow.right", android: "arrow_forward", web: "arrow_forward" }}
               size={21}
@@ -268,16 +268,16 @@ export default function Medidores() {
 
       {/* CONSULTAR MEDIDOR */}
       <Animated.View entering={FadeInUp.delay(100).duration(500)}>
-        <View className="mx-4 mt-5 rounded-2xl border border-cyan-100 bg-white/95 p-5">
-          <Text className="text-xs font-extrabold tracking-widest text-teal-700">
+        <View className="mx-4 mt-5 gap-1 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <Text className="text-xs font-extrabold tracking-[1.5px] text-aqua-turquesa">
             ACCIÓN PRINCIPAL
           </Text>
 
-          <Text className="mt-2 text-2xl font-black text-slate-900">
+          <Text className="mt-1 text-2xl font-black tracking-tight text-aqua-marino">
             Identificar medidor
           </Text>
 
-          <Text className="mb-5 mt-2 text-sm text-slate-500">
+          <Text className="mb-3 mt-1 text-sm leading-5 text-slate-600">
             Ingresa el código impreso en la etiqueta.
           </Text>
 
@@ -285,8 +285,8 @@ export default function Medidores() {
             autoCapitalize="characters"
             maxLength={10}
             placeholder="MED-123456"
-            placeholderTextColor="#94a3b8"
-            className="mb-4 min-h-14 rounded-xl border border-slate-300 bg-slate-50 px-4 text-lg font-bold text-slate-900"
+            placeholderTextColor="#607789"
+            className="mb-3 min-h-14 rounded-2xl border border-slate-300 bg-aqua-fondo px-4 text-base font-bold text-aqua-marino"
             value={codigo}
             onChangeText={setCodigo}
             onSubmitEditing={consultar}
@@ -307,12 +307,12 @@ export default function Medidores() {
       </Animated.View>
 
       {/* AVANCE DE SINCRONIZACIÓN */}
-      <View className="mx-4 mt-5 rounded-2xl border border-slate-200 bg-white/95 p-5">
-        <Text className="text-xs font-extrabold tracking-widest text-teal-700">
+      <View className="mx-4 mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <Text className="text-xs font-extrabold tracking-[1.5px] text-aqua-turquesa">
           SINCRONIZACIÓN
         </Text>
 
-        <Text className="mt-2 text-xl font-black text-slate-900">
+        <Text className="mt-2 text-xl font-black text-aqua-marino">
           Avance de lecturas
         </Text>
 
@@ -322,17 +322,17 @@ export default function Medidores() {
 
         <AnimatedProgressBar porcentaje={porcentajeEnviado} />
 
-        <Text className="mt-3 text-right text-sm font-bold text-teal-700">
+        <Text className="mt-3 text-right text-sm font-bold text-aqua-turquesa">
           {porcentajeEnviado}% confirmado
         </Text>
       </View>
 
       <Animated.View
         entering={FadeInUp.delay(220).duration(500)}
-        className="mx-4 mt-5 overflow-hidden rounded-3xl border border-cyan-100 bg-cyan-50 px-4 pt-4"
+        className="mx-4 mt-5 overflow-hidden rounded-3xl border border-aqua-celeste bg-aqua-celeste/50 px-4 pt-4"
       >
-        <Text className="text-xs font-black tracking-widest text-teal-700">RED DE AGUA EN CAMPO</Text>
-        <Text className="mt-1 text-lg font-black text-slate-900">
+        <Text className="text-xs font-black tracking-[1.5px] text-aqua-turquesa">RED DE AGUA EN CAMPO</Text>
+        <Text className="mt-1 text-lg font-black text-aqua-marino">
           Lecturas confiables, incluso sin conexión
         </Text>
         <AquaIllustration compacta />
