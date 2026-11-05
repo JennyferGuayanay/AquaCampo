@@ -13,6 +13,20 @@ test("impide duplicados locales por medidor y mes", async () => {
   );
 });
 
+test("exige coordenadas válidas al guardar una lectura", async () => {
+  const repositorio = crearRepositorioLocal(new Memoria());
+  await assert.rejects(
+    repositorio.guardarLectura(lecturaBase({ ubicacion: null })),
+    /ubicación es obligatoria/,
+  );
+  await assert.rejects(
+    repositorio.guardarLectura(
+      lecturaBase({ ubicacion: { latitude: 91, longitude: 0 } }),
+    ),
+    /ubicación es obligatoria/,
+  );
+});
+
 test("permite editar una pendiente y bloquea una enviada", async () => {
   const repositorio = crearRepositorioLocal(new Memoria());
   await repositorio.guardarLectura(lecturaBase());
@@ -62,4 +76,31 @@ test("recupera como incierto un envío interrumpido al reiniciar", async () => {
   await repositorio.actualizarLectura("local-1", { estadoSync: "enviando" });
   const recuperadas = await repositorio.recuperarEnviosInterrumpidos();
   assert.equal(recuperadas[0].estadoSync, "incierto");
+});
+
+test("conserva coordenadas sin conexión y normaliza lecturas antiguas", async () => {
+  const memoria = new Memoria();
+  const repositorio = crearRepositorioLocal(memoria);
+  await repositorio.guardarLectura(
+    lecturaBase({ ubicacion: { latitude: -0.18, longitude: -78.47 } }),
+  );
+
+  const conUbicacion = await repositorio.obtenerLecturas();
+  assert.deepEqual(conUbicacion[0].ubicacion, {
+    latitude: -0.18,
+    longitude: -78.47,
+  });
+
+  const lecturaAnterior = lecturaBase();
+  delete lecturaAnterior.ubicacion;
+  memoria.datos.set("aqua_lecturas", JSON.stringify([lecturaAnterior]));
+  const anterior = await repositorio.obtenerLecturas();
+  assert.equal(anterior[0].ubicacion, null);
+
+  memoria.datos.set(
+    "aqua_lecturas",
+    JSON.stringify([lecturaBase({ ubicacion: { latitude: 100, longitude: 0 } })]),
+  );
+  const invalida = await repositorio.obtenerLecturas();
+  assert.equal(invalida[0].ubicacion, null);
 });

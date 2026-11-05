@@ -32,6 +32,11 @@ export interface Medidor {
   promedioMensual: number;
 }
 
+export interface Coordenadas {
+  latitude: number;
+  longitude: number;
+}
+
 export interface Lectura {
   idLocal: string;
   codigoMedidor: string;
@@ -45,6 +50,7 @@ export interface Lectura {
   descripcionDanio: string;
   confirmacionAnomalia: boolean;
   fotoUri: string | null;
+  ubicacion?: Coordenadas | null;
   estadoSync: EstadoSync;
   pendienteVerificacion: boolean;
   conflicto?: ConflictoLectura | null;
@@ -62,6 +68,7 @@ export interface Borrador {
   descripcion: string;
   confirmado: boolean;
   fotoUri: string | null;
+  ubicacion?: Coordenadas | null;
   tecnico?: string;
   idLocal?: string | null;
   actualizadoEn?: string;

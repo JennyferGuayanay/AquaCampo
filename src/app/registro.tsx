@@ -1,5 +1,6 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import * as Location from "expo-location";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -24,7 +25,7 @@ import {
   obtenerLecturas,
 } from "../storage/local";
 import type { Borrador, Lectura } from "../types/models";
-import { validarCodigo } from "../utils/rules";
+import { sonCoordenadasValidas, validarCodigo } from "../utils/rules";
 
 function borradorInicial(codigo: string, tecnico: string): Borrador {
   return {
@@ -35,6 +36,7 @@ function borradorInicial(codigo: string, tecnico: string): Borrador {
     descripcion: "",
     confirmado: false,
     fotoUri: null,
+    ubicacion: null,
     tecnico,
     idLocal: null,
   };
@@ -49,14 +51,47 @@ export default function Registro() {
   const codigo = typeof parametros.codigo === "string" ? parametros.codigo : "";
   const idLocal = typeof parametros.idLocal === "string" ? parametros.idLocal : null;
   const recuperar = parametros.borrador === "1";
-  const { sesion, cargando, actualizar } = useAqua();
+  const { sesion, cargando, conectado, actualizar } = useAqua();
   const [codigoActual, setCodigoActual] = useState(codigo);
   const { medidor } = useMedidor(codigoActual);
   const [valor, setValor] = useState<Borrador | null>(null);
   const [lecturaAnterior, setLecturaAnterior] = useState<Lectura | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [listo, setListo] = useState(false);
+  const [estadoUbicacion, setEstadoUbicacion] = useState<
+    "inactivo" | "cargando" | "denegado" | "error" | "disponible" | "manual"
+  >("inactivo");
   const guardado = useRef(false);
+  const solicitudUbicacion = useRef(false);
+
+  const solicitarUbicacion = useCallback(async () => {
+    setEstadoUbicacion("cargando");
+    try {
+      const permiso = await Location.requestForegroundPermissionsAsync();
+      if (permiso.status !== "granted") {
+        setEstadoUbicacion("denegado");
+        return;
+      }
+
+      const actual = await Location.getCurrentPositionAsync({});
+      const ubicacion = {
+        latitude: actual.coords.latitude,
+        longitude: actual.coords.longitude,
+      };
+      if (!sonCoordenadasValidas(ubicacion)) {
+        throw new Error("El dispositivo devolvió coordenadas inválidas.");
+      }
+
+      setValor((actualizado) =>
+        actualizado && !actualizado.ubicacion
+          ? { ...actualizado, ubicacion }
+          : actualizado,
+      );
+      setEstadoUbicacion("disponible");
+    } catch {
+      setEstadoUbicacion("error");
+    }
+  }, []);
 
   useEffect(() => {
     if (!sesion || !validarCodigo(codigo)) return;
@@ -83,11 +118,17 @@ export default function Registro() {
           descripcion: anterior.descripcionDanio,
           confirmado: anterior.confirmacionAnomalia,
           fotoUri: anterior.fotoUri,
+          ubicacion: anterior.ubicacion ?? null,
           tecnico,
           idLocal: anterior.idLocal,
         });
       } else if (recuperar) {
-        setValor((await obtenerBorrador(tecnico)) ?? borradorInicial(codigo, tecnico));
+        const borrador = await obtenerBorrador(tecnico);
+        setValor(
+          borrador
+            ? { ...borrador, ubicacion: borrador.ubicacion ?? null }
+            : borradorInicial(codigo, tecnico),
+        );
       } else {
         setValor(borradorInicial(codigo, tecnico));
       }
@@ -95,6 +136,12 @@ export default function Registro() {
     }
     void cargar();
   }, [codigo, idLocal, recuperar, sesion]);
+
+  useEffect(() => {
+    if (!listo || !valor || valor.ubicacion || solicitudUbicacion.current) return;
+    solicitudUbicacion.current = true;
+    void solicitarUbicacion();
+  }, [listo, solicitarUbicacion, valor]);
 
   useEffect(() => {
     if (!sesion || !valor || !listo || guardado.current) return;
@@ -120,6 +167,14 @@ export default function Registro() {
 
   async function guardar(consumo: number | null, anomalo: boolean) {
     if (!valor || !sesion) return;
+    const ubicacion = valor.ubicacion;
+    if (!sonCoordenadasValidas(ubicacion)) {
+      Alert.alert(
+        "Ubicación obligatoria",
+        "Obtén tu ubicación actual o selecciona un punto válido en el mapa.",
+      );
+      return;
+    }
     if (!validarCodigo(codigoActual)) {
       Alert.alert("Código incorrecto", "Usa el formato MED- seguido de seis dígitos.");
       return;
@@ -142,6 +197,7 @@ export default function Registro() {
       descripcionDanio: valor.estado === "dañado" ? valor.descripcion.trim() : "",
       confirmacionAnomalia: anomalo ? valor.confirmado : false,
       fotoUri: valor.fotoUri,
+      ubicacion,
       estadoSync: "pendiente",
       pendienteVerificacion: !medidor || medidor.ultimaLectura == null,
       conflicto: null,
@@ -224,7 +280,14 @@ export default function Registro() {
         <ReadingForm
           medidor={medidor}
           valor={valor}
+          conectado={conectado}
+          estadoUbicacion={estadoUbicacion}
           onChange={setValor}
+          onCambiarUbicacion={(ubicacion) => {
+            setValor((actual) => actual ? { ...actual, ubicacion } : actual);
+            setEstadoUbicacion("manual");
+          }}
+          onSolicitarUbicacion={() => void solicitarUbicacion()}
           onGuardar={guardar}
           guardando={guardando}
         />

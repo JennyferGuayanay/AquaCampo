@@ -1,5 +1,20 @@
 
-import type { EstadoMedidor } from "../types/models";
+import type { Coordenadas, EstadoMedidor } from "../types/models";
+
+export function sonCoordenadasValidas(
+  ubicacion: Coordenadas | null | undefined,
+): ubicacion is Coordenadas {
+  return (
+    ubicacion !== null &&
+    ubicacion !== undefined &&
+    Number.isFinite(ubicacion.latitude) &&
+    ubicacion.latitude >= -90 &&
+    ubicacion.latitude <= 90 &&
+    Number.isFinite(ubicacion.longitude) &&
+    ubicacion.longitude >= -180 &&
+    ubicacion.longitude <= 180
+  );
+}
 
 export function validarCodigo(codigo: string) {
   return /^MED-[0-9]{6}$/.test(codigo);

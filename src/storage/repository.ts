@@ -1,4 +1,5 @@
 import type { Borrador, Lectura, Medidor } from "../types/models";
+import { sonCoordenadasValidas } from "../utils/rules";
 
 export interface AlmacenamientoClaveValor {
   getItem(clave: string): Promise<string | null>;
@@ -18,6 +19,9 @@ function claveBorrador(tecnico: string) {
 function normalizarLectura(lectura: Lectura): Lectura {
   return {
     ...lectura,
+    ubicacion: sonCoordenadasValidas(lectura.ubicacion)
+      ? lectura.ubicacion
+      : null,
     conflicto: lectura.conflicto ?? null,
     intentoEn: lectura.intentoEn ?? null,
     enviadoEn: lectura.enviadoEn ?? null,
@@ -96,6 +100,12 @@ export function crearRepositorioLocal(adaptador: AlmacenamientoClaveValor) {
 
     async guardarLectura(lectura: Lectura) {
       return exclusivo(async () => {
+        if (!sonCoordenadasValidas(lectura.ubicacion)) {
+          throw new Error(
+            "La ubicación es obligatoria para guardar la lectura.",
+          );
+        }
+
         const lecturas = await leerLecturas();
         const indice = lecturas.findIndex(
           (item) => item.idLocal === lectura.idLocal,

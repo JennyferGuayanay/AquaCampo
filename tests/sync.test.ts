@@ -58,6 +58,20 @@ test("marca conflicto si el mismo id remoto contiene datos diferentes", async ()
   assert.equal(prueba.lecturas[0].conflicto?.tipo, "respuesta_divergente");
 });
 
+test("detecta una ubicación diferente al confirmar una lectura remota", async () => {
+  const local = lecturaBase({
+    estadoSync: "incierto",
+    ubicacion: { latitude: -0.18, longitude: -78.47 },
+  });
+  const remota = lecturaBase({
+    ubicacion: { latitude: -0.2, longitude: -78.5 },
+  });
+  const prueba = escenario([local], { remotas: [remota] });
+  await prueba.sincronizar();
+  assert.equal(prueba.lecturas[0].estadoSync, "conflicto");
+  assert.equal(prueba.lecturas[0].conflicto?.tipo, "respuesta_divergente");
+});
+
 test("deja incierto un POST con error de red", async () => {
   const prueba = escenario([lecturaBase()], { errorPost: new Error("red interrumpida") });
   const resultado = await prueba.sincronizar();

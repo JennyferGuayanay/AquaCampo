@@ -27,6 +27,7 @@ La implementación se encuentra en `src/storage/local.ts` y `src/storage/reposit
 - Los datos se conservan después de cerrar la aplicación.
 - Los borradores se almacenan por técnico.
 - Es necesario serializar y recuperar los datos en formato JSON.
+- Las coordenadas de las lecturas se guardan en el mismo objeto JSON. Las lecturas previas que no tienen coordenadas se recuperan con ubicación nula, sin migrar a SQLite.
 - AsyncStorage no debe utilizarse para almacenar contraseñas u otros secretos.
 
 ## Verificación

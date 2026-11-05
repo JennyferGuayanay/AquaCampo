@@ -12,14 +12,24 @@ import {
 
 import { AquaColores, AquaSombra } from "../constants/aquaTheme";
 import { conservarFoto } from "../storage/photoStorage";
-import type { Borrador, EstadoMedidor, Medidor } from "../types/models";
-import { calcularConsumo, esAnomalo, validarRegistro } from "../utils/rules";
+import type { Borrador, Coordenadas, EstadoMedidor, Medidor } from "../types/models";
+import {
+  calcularConsumo,
+  esAnomalo,
+  sonCoordenadasValidas,
+  validarRegistro,
+} from "../utils/rules";
 import { AquaButton } from "./AquaButton";
+import { LeafletMap } from "./LeafletMap";
 
 interface ReadingFormProps {
   medidor: Medidor | null;
   valor: Borrador;
+  conectado: boolean;
+  estadoUbicacion: "inactivo" | "cargando" | "denegado" | "error" | "disponible" | "manual";
   onChange(valor: Borrador): void;
+  onCambiarUbicacion(ubicacion: Coordenadas): void;
+  onSolicitarUbicacion(): void;
   onGuardar(consumo: number | null, anomalo: boolean): void;
   guardando?: boolean;
 }
@@ -27,7 +37,11 @@ interface ReadingFormProps {
 export function ReadingForm({
   medidor,
   valor,
+  conectado,
+  estadoUbicacion,
   onChange,
+  onCambiarUbicacion,
+  onSolicitarUbicacion,
   onGuardar,
   guardando = false,
 }: ReadingFormProps) {
@@ -111,6 +125,13 @@ export function ReadingForm({
   }
 
   function validarYGuardar() {
+    if (!sonCoordenadasValidas(valor.ubicacion)) {
+      return Alert.alert(
+        "Ubicación obligatoria",
+        "Obtén tu ubicación actual o selecciona un punto válido en el mapa.",
+      );
+    }
+
     const error = validarRegistro(
       valor.estado,
       valor.estado === "inaccesible" ? "" : valor.lectura,
@@ -184,6 +205,36 @@ export function ReadingForm({
       <Text style={estilos.descripcion}>
         Selecciona el estado observado antes de guardar.
       </Text>
+
+      <Text style={estilos.seccion}>Ubicación del medidor</Text>
+      <LeafletMap
+        coordenadas={valor.ubicacion ?? null}
+        editable
+        conectado={conectado}
+        onCambiarCoordenadas={onCambiarUbicacion}
+      />
+      {estadoUbicacion === "cargando" && (
+        <Text style={estilos.descripcion}>Obteniendo ubicación GPS...</Text>
+      )}
+      {estadoUbicacion === "denegado" && (
+        <Text style={estilos.avisoUbicacion}>
+          No se concedió el permiso GPS. Puedes colocar el marcador manualmente
+          en el mapa.
+        </Text>
+      )}
+      {estadoUbicacion === "error" && (
+        <Text style={estilos.avisoUbicacion}>
+          No se pudo obtener el GPS. Selecciona la ubicación manualmente en el
+          mapa.
+        </Text>
+      )}
+      {(estadoUbicacion === "denegado" || estadoUbicacion === "error") && (
+        <AquaButton
+          titulo="Intentar obtener GPS de nuevo"
+          onPress={onSolicitarUbicacion}
+          secundario
+        />
+      )}
 
       <View style={estilos.opciones}>
         {(["normal", "inaccesible", "dañado"] as EstadoMedidor[]).map(
@@ -331,6 +382,14 @@ const estilos = StyleSheet.create({
     color: AquaColores.marino,
     fontSize: 22,
     fontWeight: "900",
+  },
+  seccion: { color: AquaColores.marino, fontSize: 16, fontWeight: "900" },
+  avisoUbicacion: {
+    color: AquaColores.avisoTexto,
+    backgroundColor: AquaColores.aviso,
+    borderRadius: 14,
+    padding: 12,
+    lineHeight: 18,
   },
 
   descripcion: {

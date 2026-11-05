@@ -43,6 +43,7 @@ export function lecturaBase(cambio: Partial<Lectura> = {}): Lectura {
     descripcionDanio: "",
     confirmacionAnomalia: false,
     fotoUri: null,
+    ubicacion: { latitude: 0, longitude: 0 },
     estadoSync: "pendiente",
     pendienteVerificacion: false,
     conflicto: null,

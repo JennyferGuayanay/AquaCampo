@@ -1,9 +1,10 @@
 import { Redirect, router, useFocusEffect } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AquaButton } from "../components/AquaButton";
 import { ConnectionStatus } from "../components/ConnectionStatus";
+import { LeafletMap } from "../components/LeafletMap";
 import {
   AquaColores,
   AquaEspaciado,
@@ -13,6 +14,7 @@ import {
 } from "../constants/aquaTheme";
 import { useAqua } from "../context/AquaContext";
 import type { EstadoSync, Lectura } from "../types/models";
+import { sonCoordenadasValidas } from "../utils/rules";
 
 const etiquetas: Record<EstadoSync, string> = {
   pendiente: "Pendiente de envío",
@@ -42,6 +44,7 @@ export default function Pendientes() {
   } = useAqua();
   const pendientes = lecturas.filter((item) => item.estadoSync !== "enviado").length;
   const conflictos = lecturas.filter((item) => item.estadoSync === "conflicto").length;
+  const [mapaAbierto, setMapaAbierto] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -131,6 +134,30 @@ export default function Pendientes() {
               <Text style={estilos.datoValor}>{lectura.consumo === null ? "Pendiente" : `${lectura.consumo} m³`}</Text>
             </View>
           </View>
+          {sonCoordenadasValidas(lectura.ubicacion) ? (
+            <>
+              <AquaButton
+                titulo={mapaAbierto === lectura.idLocal ? "Ocultar ubicación" : "Ver ubicación"}
+                onPress={() =>
+                  setMapaAbierto((actual) =>
+                    actual === lectura.idLocal ? null : lectura.idLocal,
+                  )
+                }
+                secundario
+              />
+              {mapaAbierto === lectura.idLocal && (
+                <LeafletMap
+                  coordenadas={lectura.ubicacion}
+                  conectado={conectado}
+                  altura={190}
+                />
+              )}
+            </>
+          ) : (
+            <Text style={estilos.incierto}>
+              Esta lectura anterior no tiene una ubicación guardada.
+            </Text>
+          )}
           {lectura.conflicto && (
             <View style={estilos.conflicto}>
               <Text style={estilos.conflictoTitulo}>Acción necesaria</Text>

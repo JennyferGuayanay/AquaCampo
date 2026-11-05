@@ -46,6 +46,8 @@ function mismoContenido(local: Lectura, remoto: Lectura) {
     local.descripcionDanio === remoto.descripcionDanio &&
     local.confirmacionAnomalia === remoto.confirmacionAnomalia &&
     local.fotoUri === remoto.fotoUri &&
+    local.ubicacion?.latitude === remoto.ubicacion?.latitude &&
+    local.ubicacion?.longitude === remoto.ubicacion?.longitude &&
     local.pendienteVerificacion === remoto.pendienteVerificacion
   );
 }

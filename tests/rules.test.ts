@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   calcularConsumo,
   esAnomalo,
+  sonCoordenadasValidas,
   validarCodigo,
   validarRegistro,
 } from "../src/utils/rules";
@@ -19,6 +20,13 @@ test("calcula consumo y exige superar exactamente el triple", () => {
   assert.equal(calcularConsumo(160, 100), 60);
   assert.equal(esAnomalo(30, 10), false);
   assert.equal(esAnomalo(31, 10), true);
+});
+
+test("valida las coordenadas geográficas dentro de sus rangos", () => {
+  assert.equal(sonCoordenadasValidas({ latitude: -90, longitude: 180 }), true);
+  assert.equal(sonCoordenadasValidas({ latitude: 91, longitude: 0 }), false);
+  assert.equal(sonCoordenadasValidas({ latitude: 0, longitude: -181 }), false);
+  assert.equal(sonCoordenadasValidas(null), false);
 });
 
 test("valida los campos obligatorios de cada estado", () => {
