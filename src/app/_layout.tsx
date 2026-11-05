@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { AquaColores } from "../constants/aquaTheme";
 import { AquaProvider } from "../context/AquaContext";
+import "../global.css";
 
 export default function RootLayout() {
   return (

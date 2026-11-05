@@ -1,9 +1,11 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import Animated, { FadeInDown, FadeInUp, ZoomIn } from "react-native-reanimated";
 
 import { AquaButton } from "../components/AquaButton";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
+import { ConnectionStatus } from "../components/ConnectionStatus";
 import { MeterCard } from "../components/MeterCard";
-import { AquaColores, AquaSombra } from "../constants/aquaTheme";
 import { useAqua } from "../context/AquaContext";
 import { useMedidor } from "../hooks/useMedidor";
 import { validarCodigo } from "../utils/rules";
@@ -15,28 +17,52 @@ export default function Detalle() {
   const { medidor, cargando, error, recargar } = useMedidor(codigo);
 
   if (cargandoSesion) {
-    return <View style={estilos.centro}><ActivityIndicator size="large" color={AquaColores.turquesaOscuro} /></View>;
+    return (
+      <View className="flex-1 items-center justify-center bg-sky-50">
+        <AquaMotionBackground />
+        <ActivityIndicator size="large" color="#087C98" />
+      </View>
+    );
   }
   if (!sesion) return <Redirect href="/login" />;
 
   if (!validarCodigo(codigo)) {
     return (
-      <View style={estilos.centro}>
-        <Text style={estilos.titulo}>Código no válido</Text>
+      <View className="flex-1 items-center justify-center gap-5 bg-sky-50 p-6">
+        <AquaMotionBackground />
+        <Text className="text-center text-2xl font-black text-slate-900">
+          Código no válido
+        </Text>
         <AquaButton titulo="Volver al panel" onPress={() => router.replace("/medidores")} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={estilos.pagina} contentContainerStyle={estilos.contenido}>
+    <View className="flex-1 bg-sky-50">
+      <AquaMotionBackground />
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="flex-grow gap-4 p-5 pb-12"
+        showsVerticalScrollIndicator={false}
+      >
+      <Animated.View entering={FadeInDown.duration(450)} className="gap-2">
+        <Text className="text-xs font-black tracking-widest text-teal-700">
+          CONSULTA DE CAMPO
+        </Text>
+        <Text className="text-3xl font-black text-slate-900">Detalle del medidor</Text>
+        <ConnectionStatus />
+      </Animated.View>
+
       {cargando ? (
-        <View style={estilos.centro}>
-          <ActivityIndicator size="large" color={AquaColores.turquesaOscuro} />
-          <Text style={estilos.descripcion}>Consultando información del medidor...</Text>
+        <View className="min-h-64 flex-1 items-center justify-center gap-4">
+          <ActivityIndicator size="large" color="#087C98" />
+          <Text className="text-center leading-6 text-slate-500">
+            Consultando información del medidor...
+          </Text>
         </View>
       ) : medidor ? (
-        <>
+        <Animated.View entering={FadeInUp.delay(100).duration(450)} className="gap-4">
           <MeterCard medidor={medidor} />
           <AquaButton
             titulo="Registrar lectura"
@@ -45,16 +71,19 @@ export default function Detalle() {
           {conectado && (
             <AquaButton titulo="Actualizar datos" onPress={() => void recargar()} secundario />
           )}
-        </>
+        </Animated.View>
       ) : (
-        <View style={estilos.aviso}>
-          <Text style={estilos.titulo}>
+        <Animated.View
+          entering={ZoomIn.duration(400)}
+          className="gap-4 rounded-3xl border border-cyan-100 bg-white p-6 shadow-sm"
+        >
+          <Text className="text-center text-2xl font-black text-slate-900">
             {conectado ? "Medidor no encontrado" : "Registro sin datos previos"}
           </Text>
-          <Text style={estilos.descripcion}>{error}</Text>
+          <Text className="text-center leading-6 text-slate-500">{error}</Text>
           {!conectado && (
             <>
-              <Text style={estilos.descripcion}>
+              <Text className="text-center leading-6 text-slate-500">
                 Puedes guardar la lectura. Se verificará automáticamente al recuperar la conexión.
               </Text>
               <AquaButton
@@ -63,18 +92,12 @@ export default function Detalle() {
               />
             </>
           )}
-          {conectado && <AquaButton titulo="Intentar otra vez" onPress={() => void recargar()} secundario />}
-        </View>
+          {conectado && (
+            <AquaButton titulo="Intentar otra vez" onPress={() => void recargar()} secundario />
+          )}
+        </Animated.View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
-
-const estilos = StyleSheet.create({
-  pagina: { flex: 1, backgroundColor: AquaColores.fondo },
-  contenido: { padding: 18, gap: 16, flexGrow: 1 },
-  centro: { flex: 1, minHeight: 260, alignItems: "center", justifyContent: "center", gap: 15, padding: 20 },
-  aviso: { backgroundColor: AquaColores.blanco, borderRadius: 24, padding: 22, gap: 14, ...AquaSombra },
-  titulo: { color: AquaColores.marino, fontSize: 23, fontWeight: "900", textAlign: "center" },
-  descripcion: { color: AquaColores.textoSuave, lineHeight: 21, textAlign: "center" },
-});

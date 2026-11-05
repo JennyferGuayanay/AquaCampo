@@ -5,16 +5,17 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 import { AquaButton } from "../components/AquaButton";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
+import { ConnectionStatus } from "../components/ConnectionStatus";
 import { MeterCard } from "../components/MeterCard";
 import { ReadingForm } from "../components/ReadingForm";
-import { AquaColores } from "../constants/aquaTheme";
 import { useAqua } from "../context/AquaContext";
 import { useMedidor } from "../hooks/useMedidor";
 import {
@@ -152,14 +153,14 @@ export default function Registro() {
   }, [listo, sesion, valor]);
 
   if (cargando) {
-    return <View style={estilos.centro}><ActivityIndicator size="large" color={AquaColores.turquesaOscuro} /></View>;
+    return <View className="flex-1 items-center justify-center bg-sky-50"><ActivityIndicator size="large" color="#087C98" /></View>;
   }
   if (!sesion) return <Redirect href="/login" />;
 
   if (!validarCodigo(codigo)) {
     return (
-      <View style={estilos.centro}>
-        <Text style={estilos.titulo}>No se recibió un código de medidor válido.</Text>
+      <View className="flex-1 items-center justify-center gap-4 bg-sky-50 p-6">
+        <Text className="text-center text-2xl font-black text-slate-900">No se recibió un código de medidor válido.</Text>
         <AquaButton titulo="Volver al panel" onPress={() => router.replace("/medidores")} />
       </View>
     );
@@ -244,29 +245,43 @@ export default function Registro() {
   }
 
   return (
-    <ScrollView style={estilos.pagina} contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled">
+    <View className="flex-1 bg-sky-50">
+      <AquaMotionBackground />
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="gap-4 p-5 pb-12"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+      <Animated.View entering={FadeInDown.duration(450)} className="gap-2">
+        <Text className="text-xs font-black tracking-widest text-teal-700">CAPTURA EN CAMPO</Text>
+        <Text className="text-3xl font-black text-slate-900">Registrar lectura</Text>
+        <ConnectionStatus />
+      </Animated.View>
       {medidor ? (
-        <MeterCard medidor={medidor} />
+        <Animated.View entering={FadeInUp.delay(80).duration(450)}>
+          <MeterCard medidor={medidor} />
+        </Animated.View>
       ) : (
-        <View style={estilos.aviso}>
-          <Text style={estilos.avisoTitulo}>Pendiente de verificación</Text>
-          <Text style={estilos.avisoTexto}>
+        <View className="gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <Text className="text-base font-black text-amber-900">Pendiente de verificación</Text>
+          <Text className="leading-5 text-amber-900">
             No hay datos previos disponibles. Al reconectar se validará el medidor y se revisará el consumo.
           </Text>
         </View>
       )}
       {lecturaAnterior?.conflicto?.tipo === "medidor_no_encontrado" && (
-        <View style={estilos.correccionCodigo}>
-          <Text style={estilos.avisoTitulo}>Corregir código del medidor</Text>
-          <Text style={estilos.avisoTexto}>
+        <View className="gap-3 rounded-2xl border border-cyan-100 bg-white p-4">
+          <Text className="text-base font-black text-amber-900">Corregir código del medidor</Text>
+          <Text className="leading-5 text-slate-600">
             El código anterior no existe en MockAPI. Ingresa el código correcto antes de guardar.
           </Text>
           <TextInput
             autoCapitalize="characters"
             maxLength={10}
             placeholder="MED-123456"
-            placeholderTextColor={AquaColores.textoSuave}
-            style={estilos.inputCodigo}
+            placeholderTextColor="#688391"
+            className="rounded-2xl border border-cyan-100 bg-slate-50 p-4 font-black tracking-widest text-slate-900"
             value={codigoActual}
             onChangeText={(nuevoCodigo) => {
               const normalizado = nuevoCodigo.toUpperCase();
@@ -293,18 +308,7 @@ export default function Registro() {
         />
       )}
       <AquaButton titulo="Descartar borrador y salir" onPress={descartar} secundario />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
-
-const estilos = StyleSheet.create({
-  pagina: { flex: 1, backgroundColor: AquaColores.fondo },
-  contenido: { padding: 18, paddingBottom: 42, gap: 16 },
-  centro: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 16 },
-  titulo: { color: AquaColores.marino, fontSize: 22, fontWeight: "900", textAlign: "center" },
-  aviso: { backgroundColor: AquaColores.aviso, borderRadius: 18, padding: 16, gap: 6 },
-  avisoTitulo: { color: "#764B00", fontWeight: "900", fontSize: 16 },
-  avisoTexto: { color: "#764B00", lineHeight: 20 },
-  correccionCodigo: { backgroundColor: AquaColores.blanco, borderRadius: 18, padding: 16, gap: 9 },
-  inputCodigo: { borderWidth: 1, borderColor: AquaColores.borde, borderRadius: 14, padding: 14, color: AquaColores.marino, fontWeight: "900", letterSpacing: 1 },
-});

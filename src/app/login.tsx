@@ -1,228 +1,228 @@
+
 import { Redirect, router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
-  StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import {
+  reload,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  makeMutable,
+  ReduceMotion,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 
+import { AnimatedTextField } from "../components/AnimatedTextField";
 import { AquaButton } from "../components/AquaButton";
+import { AquaDropLogo } from "../components/AquaDropLogo";
 import { AquaIllustration } from "../components/AquaIllustration";
-import { AquaColores, AquaSombra } from "../constants/aquaTheme";
+import { ConnectionStatus } from "../components/ConnectionStatus";
+import { WaterMeterPhotoBackground } from "../components/WaterMeterPhotoBackground";
+import { auth } from "../config/firebase";
 import { useAqua } from "../context/AquaContext";
 
 export default function Login() {
   const { sesion, cargando, entrar } = useAqua();
-  const [empleado, setEmpleado] = useState("");
+
+  const [correo, setCorreo] = useState("");
   const [clave, setClave] = useState("");
   const [enviando, setEnviando] = useState(false);
 
-  if (cargando) {
-    return <View style={estilos.cargando}><ActivityIndicator size="large" color={AquaColores.turquesaOscuro} /></View>;
-  }
-  if (sesion) return <Redirect href="/medidores" />;
+  const desplazamiento = useRef(makeMutable(0));
+  const reducirMovimiento = useReducedMotion();
+  const entradaFormulario = useSharedValue(reducirMovimiento ? 1 : 0);
 
-  async function iniciarSesion() {
-    if (empleado.trim().toUpperCase() !== "TEC001" || clave !== "123456") {
-      Alert.alert("Acceso denegado", "Código o contraseña incorrectos.");
+  useEffect(() => {
+    if (reducirMovimiento) return;
+    entradaFormulario.set(
+      withSpring(1, {
+        damping: 12,
+        stiffness: 115,
+        mass: 0.8,
+        reduceMotion: ReduceMotion.System,
+      }),
+    );
+  }, [entradaFormulario, reducirMovimiento]);
+
+  const estiloShake = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: desplazamiento.current.value },
+    ],
+  }));
+
+  const estiloEntrada = useAnimatedStyle(() => ({
+    opacity: entradaFormulario.get(),
+    transform: [
+      { translateY: (1 - entradaFormulario.get()) * 70 },
+      { scale: 0.86 + entradaFormulario.get() * 0.14 },
+    ],
+  }));
+
+  function shake() {
+    desplazamiento.current.value = withSequence(
+      withTiming(-14, { duration: 60 }),
+      withTiming(14, { duration: 60 }),
+      withTiming(-10, { duration: 60 }),
+      withTiming(10, { duration: 60 }),
+      withTiming(-5, { duration: 60 }),
+      withTiming(0, { duration: 60 })
+    );
+  }
+
+  async function ingresar() {
+    if (!correo.trim() || !clave.trim()) {
+      shake();
+      Alert.alert(
+        "Campos obligatorios",
+        "Ingresa correo y contraseña."
+      );
       return;
     }
+
     setEnviando(true);
+
     try {
-      await entrar("TEC001");
-      router.replace("/medidores");
-    } catch {
-      Alert.alert("Sesión", "No se pudo guardar la sesión en el dispositivo.");
+      const credencial = await signInWithEmailAndPassword(
+        auth,
+        correo.trim().toLowerCase(),
+        clave
+      );
+
+      await reload(credencial.user);
+
+      if (!credencial.user.emailVerified) {
+        router.replace("/verificar-correo");
+        return;
+      }
+
+      await entrar(credencial.user.uid);
+      router.replace("/bienvenido");
+    } catch (error) {
+      shake();
+
+      console.log("Error de login:", error);
+
+      Alert.alert(
+        "Credenciales incorrectas",
+        "Revisa tu correo electrónico y contraseña."
+      );
     } finally {
       setEnviando(false);
     }
   }
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={estilos.pagina}
-    >
-      <View pointerEvents="none" style={estilos.formasFondo}>
-        <View style={estilos.ondaSuperior} />
-        <View style={estilos.ondaSuperiorClara} />
-        <View style={estilos.circuloDecorativo} />
-        <View style={estilos.ondaInferior} />
+  if (cargando) {
+    return (
+      <View className="flex-1 items-center justify-center bg-sky-50">
+        <ActivityIndicator color="#0d9488" size="large" />
       </View>
-      <ScrollView
-        contentContainerStyle={estilos.contenido}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    );
+  }
+
+  if (sesion) {
+    return <Redirect href="/bienvenido" />;
+  }
+
+  return (
+    <View className="flex-1 bg-slate-950">
+      <WaterMeterPhotoBackground intenso />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
       >
-        <View style={estilos.columna}>
-          <View style={estilos.marcaCaja}>
-            <View style={estilos.marcaLinea}>
-              <View style={estilos.simboloMarca}>
-                <View style={estilos.ondaMarcaUno} />
-                <View style={estilos.ondaMarcaDos} />
-              </View>
-              <Text style={estilos.marca}>AquaCampo</Text>
-            </View>
-            <Text style={estilos.lema}>
-              Gestión de lecturas para jornadas de campo
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerClassName="flex-grow justify-center px-6 py-10"
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View entering={FadeInDown.duration(650)} className="items-center">
+            <AquaDropLogo />
+            <Text className="mt-1 text-center text-4xl font-black text-white">AquaCampo</Text>
+            <Text className="mt-2 text-center font-semibold text-cyan-100">
+              Agua, tecnología y trabajo de campo
             </Text>
-          </View>
+            <View className="mt-4">
+              <ConnectionStatus soloConexion />
+            </View>
+          </Animated.View>
 
-          <View style={estilos.ilustracionCaja}>
+          <Animated.View
+            entering={FadeInUp.delay(100).duration(600)}
+            className="my-2 overflow-hidden rounded-3xl border border-white/30 bg-white/80 px-3"
+          >
             <AquaIllustration compacta />
-          </View>
+          </Animated.View>
 
-          <View style={estilos.tarjeta}>
-            <View style={estilos.tituloCaja}>
-              <Text style={estilos.sobreTitulo}>ACCESO SEGURO</Text>
-              <Text style={estilos.titulo}>Inicia tu jornada</Text>
-              <Text style={estilos.descripcion}>
-                Tus lecturas permanecerán disponibles aunque pierdas la conexión.
-              </Text>
-            </View>
+          <Animated.View style={estiloEntrada}>
+            <Animated.View style={estiloShake}>
+              <View className="rounded-3xl border border-white/70 bg-white/95 p-6 shadow-lg">
+                <Text className="mb-1 text-2xl font-black text-slate-900">Iniciar sesión</Text>
+                <Text className="mb-5 text-sm text-slate-500">
+                  Accede a tus medidores y lecturas sincronizadas.
+                </Text>
 
-            <View style={estilos.campo}>
-              <Text style={estilos.etiqueta}>Código de empleado</Text>
-              <TextInput
-                autoCapitalize="characters"
-                autoComplete="username"
-                placeholder="Ej. TEC001"
-                placeholderTextColor={AquaColores.textoSuave}
-                returnKeyType="next"
-                style={estilos.input}
-                value={empleado}
-                onChangeText={setEmpleado}
-              />
-            </View>
+                <Text className="mb-2 font-semibold text-slate-700">Correo electrónico</Text>
+                <AnimatedTextField
+                  containerClassName="mb-5"
+                  placeholder="correo@ejemplo.com"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  value={correo}
+                  onChangeText={setCorreo}
+                />
 
-            <View style={estilos.campo}>
-              <Text style={estilos.etiqueta}>Contraseña</Text>
-              <TextInput
-                autoComplete="password"
-                placeholder="Ingresa tu contraseña"
-                placeholderTextColor={AquaColores.textoSuave}
-                returnKeyType="done"
-                secureTextEntry
-                style={estilos.input}
-                value={clave}
-                onChangeText={setClave}
-                onSubmitEditing={iniciarSesion}
-              />
-            </View>
+                <Text className="mb-2 font-semibold text-slate-700">Contraseña</Text>
+                <AnimatedTextField
+                  containerClassName="mb-6"
+                  placeholder="Contraseña"
+                  secureTextEntry
+                  value={clave}
+                  onChangeText={setClave}
+                  onSubmitEditing={ingresar}
+                />
 
-            <AquaButton
-              titulo="Ingresar a AquaCampo"
-              onPress={iniciarSesion}
-              cargando={enviando}
-            />
-            <Text style={estilos.pieFormulario}>
-              Acceso exclusivo para personal técnico autorizado
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+                <AquaButton titulo="Ingresar" onPress={ingresar} cargando={enviando} />
+
+                <Pressable
+                  onPress={() => router.push("/recuperar-clave")}
+                  className="mt-5 items-center"
+                >
+                  <Text className="font-semibold text-teal-700">¿Olvidaste tu contraseña?</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.push("/crear-cuenta")}
+                  className="mt-5 items-center"
+                >
+                  <Text className="font-black text-teal-700">Crear cuenta</Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          </Animated.View>
+
+          <Text className="mt-5 text-center text-[10px] text-cyan-100/80">
+            Fotografía: Basile Morin · CC BY-SA 4.0
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
-
-const estilos = StyleSheet.create({
-  pagina: { flex: 1, backgroundColor: AquaColores.blanco },
-  formasFondo: { ...StyleSheet.absoluteFill, overflow: "hidden" },
-  ondaSuperior: {
-    position: "absolute",
-    top: -128,
-    left: -80,
-    width: 470,
-    height: 235,
-    borderRadius: 180,
-    backgroundColor: AquaColores.celeste,
-    transform: [{ rotate: "-8deg" }],
-  },
-  ondaSuperiorClara: {
-    position: "absolute",
-    top: -110,
-    right: -160,
-    width: 400,
-    height: 230,
-    borderRadius: 180,
-    backgroundColor: AquaColores.celesteSuave,
-    transform: [{ rotate: "12deg" }],
-  },
-  circuloDecorativo: {
-    position: "absolute",
-    top: 112,
-    right: -24,
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 18,
-    borderColor: AquaColores.celesteSuave,
-  },
-  ondaInferior: {
-    position: "absolute",
-    bottom: -160,
-    left: -90,
-    width: 520,
-    height: 220,
-    borderRadius: 180,
-    backgroundColor: AquaColores.fondoProfundo,
-    transform: [{ rotate: "5deg" }],
-  },
-  contenido: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingHorizontal: 18,
-    paddingTop: 48,
-    paddingBottom: 30,
-  },
-  columna: { width: "100%", maxWidth: 420, alignSelf: "center" },
-  marcaCaja: { alignItems: "center", paddingHorizontal: 12 },
-  marcaLinea: { flexDirection: "row", alignItems: "center", gap: 10 },
-  simboloMarca: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
-    backgroundColor: AquaColores.marino,
-    justifyContent: "center",
-    paddingHorizontal: 7,
-    gap: 4,
-  },
-  ondaMarcaUno: { height: 3, borderRadius: 2, backgroundColor: AquaColores.celeste },
-  ondaMarcaDos: { width: "72%", height: 3, borderRadius: 2, backgroundColor: AquaColores.turquesa, alignSelf: "flex-end" },
-  marca: { color: AquaColores.marino, fontSize: 32, fontWeight: "900", letterSpacing: -1 },
-  lema: { color: AquaColores.textoSuave, textAlign: "center", marginTop: 7, lineHeight: 20, fontWeight: "600" },
-  ilustracionCaja: { height: 154, justifyContent: "center", marginVertical: 2 },
-  tarjeta: {
-    backgroundColor: AquaColores.blanco,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: AquaColores.linea,
-    padding: 22,
-    gap: 16,
-    ...AquaSombra,
-  },
-  tituloCaja: { gap: 5 },
-  sobreTitulo: { color: AquaColores.turquesaOscuro, fontSize: 11, fontWeight: "900", letterSpacing: 1.5 },
-  titulo: { color: AquaColores.marino, fontSize: 25, fontWeight: "900", letterSpacing: -0.4 },
-  descripcion: { color: AquaColores.textoSuave, lineHeight: 20 },
-  campo: { gap: 7 },
-  etiqueta: { color: AquaColores.texto, fontSize: 13, fontWeight: "800" },
-  input: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: AquaColores.borde,
-    backgroundColor: AquaColores.celesteSuave,
-    borderRadius: 15,
-    paddingHorizontal: 15,
-    color: AquaColores.texto,
-    fontSize: 16,
-  },
-  pieFormulario: { color: AquaColores.textoSuave, fontSize: 11, textAlign: "center", lineHeight: 16 },
-  cargando: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: AquaColores.blanco },
-});

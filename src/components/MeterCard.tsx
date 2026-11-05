@@ -1,12 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
-import {
-  AquaColores,
-  AquaEspaciado,
-  AquaRadios,
-  AquaSombra,
-  AquaTipografia,
-} from "../constants/aquaTheme";
 import type { Medidor } from "../types/models";
 
 interface MeterCardProps {
@@ -15,151 +8,66 @@ interface MeterCardProps {
 
 export function MeterCard({ medidor }: MeterCardProps) {
   return (
-    <View style={estilos.tarjeta}>
-      <View style={estilos.encabezado}>
-        <View style={estilos.icono}>
-          <View style={estilos.aguja} />
+    <View className="gap-4 rounded-3xl border border-cyan-100 bg-white p-5 shadow-sm">
+      <View className="flex-row items-center gap-3 border-b border-cyan-100 pb-4">
+        <View className="h-14 w-14 items-center justify-center rounded-full border-[5px] border-teal-500 bg-cyan-50">
+          <View className="h-1 w-6 -rotate-[35deg] rounded-full bg-red-600" />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={estilos.etiqueta}>MEDIDOR IDENTIFICADO</Text>
-          <Text style={estilos.codigo}>{medidor.codigo}</Text>
+        <View className="min-w-0 flex-1">
+          <Text className="text-[11px] font-black tracking-widest text-teal-700">
+            MEDIDOR IDENTIFICADO
+          </Text>
+          <Text className="text-2xl font-black text-slate-900">{medidor.codigo}</Text>
         </View>
-        <View style={estilos.estadoInsignia}>
-          <Text style={estilos.estadoTexto}>{medidor.estado}</Text>
-        </View>
-      </View>
-
-      <View style={estilos.ubicacion}>
-        <Text style={estilos.tituloDato}>UBICACIÓN DEL SERVICIO</Text>
-        <Text style={estilos.direccion}>{medidor.direccion}</Text>
-        <Text style={estilos.detalleSuave}>Sector {medidor.sector}</Text>
-      </View>
-
-      <View style={estilos.metricas}>
-        <View style={estilos.metrica}>
-          <Text style={estilos.metricaEtiqueta}>Lectura anterior</Text>
-          <Text style={estilos.metricaValor}>{medidor.ultimaLectura} m³</Text>
-        </View>
-        <View style={estilos.separador} />
-        <View style={estilos.metrica}>
-          <Text style={estilos.metricaEtiqueta}>Promedio mensual</Text>
-          <Text style={estilos.metricaValor}>{medidor.promedioMensual} m³</Text>
+        <View className="max-w-24 rounded-xl bg-cyan-50 px-3 py-2">
+          <Text className="text-center text-xs font-black capitalize text-teal-700">
+            {medidor.estado}
+          </Text>
         </View>
       </View>
 
-      <View style={estilos.fila}>
-        <Text style={estilos.filaEtiqueta}>Cuenta</Text>
-        <Text style={estilos.valor}>{medidor.numeroCuenta}</Text>
+      <View className="gap-1 rounded-2xl bg-slate-50 p-4">
+        <Text className="text-[10px] font-black tracking-widest text-teal-700">
+          UBICACIÓN DEL SERVICIO
+        </Text>
+        <Text className="text-base font-extrabold leading-6 text-slate-900">
+          {medidor.direccion}
+        </Text>
+        <Text className="text-sm text-slate-500">Sector {medidor.sector}</Text>
       </View>
-      <View style={estilos.fila}>
-        <Text style={estilos.filaEtiqueta}>Última fecha</Text>
-        <Text style={estilos.valor}>{medidor.fechaUltimaLectura}</Text>
+
+      <View className="flex-row items-stretch rounded-2xl bg-slate-900 py-4">
+        <View className="flex-1 items-center gap-1 px-2">
+          <Text className="text-center text-[11px] font-bold text-cyan-200">
+            Lectura anterior
+          </Text>
+          <Text className="text-center text-lg font-black text-white">
+            {medidor.ultimaLectura} m³
+          </Text>
+        </View>
+        <View className="w-px bg-white/20" />
+        <View className="flex-1 items-center gap-1 px-2">
+          <Text className="text-center text-[11px] font-bold text-cyan-200">
+            Promedio mensual
+          </Text>
+          <Text className="text-center text-lg font-black text-white">
+            {medidor.promedioMensual} m³
+          </Text>
+        </View>
+      </View>
+
+      <View className="flex-row items-start justify-between gap-4">
+        <Text className="text-sm text-slate-500">Cuenta</Text>
+        <Text className="flex-1 shrink text-right font-bold text-slate-800">
+          {medidor.numeroCuenta}
+        </Text>
+      </View>
+      <View className="flex-row items-start justify-between gap-4">
+        <Text className="text-sm text-slate-500">Última fecha</Text>
+        <Text className="flex-1 shrink text-right font-bold text-slate-800">
+          {medidor.fechaUltimaLectura}
+        </Text>
       </View>
     </View>
   );
 }
-
-const estilos = StyleSheet.create({
-  tarjeta: {
-    backgroundColor: AquaColores.blanco,
-    borderRadius: AquaRadios.grande,
-    borderWidth: 1,
-    borderColor: AquaColores.linea,
-    padding: AquaEspaciado.grande,
-    gap: AquaEspaciado.medio,
-    ...AquaSombra,
-  },
-  encabezado: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: AquaEspaciado.pequeno,
-    borderBottomWidth: 1,
-    borderColor: AquaColores.linea,
-    paddingBottom: AquaEspaciado.medio,
-  },
-  icono: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 5,
-    borderColor: AquaColores.turquesa,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  aguja: {
-    width: 20,
-    height: 3,
-    backgroundColor: AquaColores.peligro,
-    transform: [{ rotate: "-35deg" }, { translateX: 7 }],
-  },
-  etiqueta: {
-    color: AquaColores.turquesaOscuro,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  codigo: {
-    color: AquaColores.marino,
-    fontSize: 22,
-    fontWeight: "900",
-  },
-  estadoInsignia: {
-    maxWidth: 92,
-    backgroundColor: AquaColores.celesteSuave,
-    borderRadius: AquaRadios.pequeno,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  estadoTexto: {
-    color: AquaColores.turquesaOscuro,
-    fontSize: AquaTipografia.etiqueta,
-    fontWeight: "900",
-    textTransform: "capitalize",
-    textAlign: "center",
-  },
-  ubicacion: {
-    backgroundColor: AquaColores.superficie,
-    borderRadius: AquaRadios.medio,
-    padding: 14,
-    gap: 4,
-  },
-  direccion: {
-    color: AquaColores.marino,
-    fontSize: AquaTipografia.cuerpo,
-    fontWeight: "800",
-    lineHeight: 21,
-  },
-  detalleSuave: { color: AquaColores.textoSuave, fontSize: 13 },
-  metricas: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    backgroundColor: AquaColores.marino,
-    borderRadius: AquaRadios.medio,
-    paddingVertical: 14,
-  },
-  metrica: { flex: 1, alignItems: "center", paddingHorizontal: 8, gap: 4 },
-  metricaEtiqueta: { color: AquaColores.celeste, fontSize: 11, fontWeight: "700", textAlign: "center" },
-  metricaValor: { color: AquaColores.blanco, fontSize: AquaTipografia.subtitulo, fontWeight: "900", textAlign: "center" },
-  separador: { width: 1, backgroundColor: "rgba(255, 255, 255, 0.2)" },
-  fila: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: AquaEspaciado.medio,
-    alignItems: "flex-start",
-  },
-  tituloDato: {
-    color: AquaColores.turquesaOscuro,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  filaEtiqueta: { color: AquaColores.textoSuave, fontSize: 13 },
-  valor: {
-    color: AquaColores.texto,
-    fontWeight: "700",
-    flex: 1,
-    flexShrink: 1,
-    textAlign: "right",
-    lineHeight: 19,
-  },
-});

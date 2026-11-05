@@ -1,8 +1,9 @@
 import { Redirect } from "expo-router";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 import { AquaIllustration } from "../components/AquaIllustration";
-import { AquaColores } from "../constants/aquaTheme";
+import { AquaMotionBackground } from "../components/AquaMotionBackground";
 import { useAqua } from "../context/AquaContext";
 
 export default function Inicio() {
@@ -10,15 +11,20 @@ export default function Inicio() {
 
   if (cargando) {
     return (
-      <View style={estilos.centro}>
-        <View style={estilos.marcaCaja}>
-          <Text style={estilos.marca}>AquaCampo</Text>
-          <Text style={estilos.subtitulo}>Preparando tu jornada de campo</Text>
-        </View>
-        <AquaIllustration compacta />
-        <ActivityIndicator size="large" color={AquaColores.turquesaOscuro} />
-        <View style={estilos.lineaCarga}>
-          <View style={estilos.lineaCargaActiva} />
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <AquaMotionBackground />
+        <Animated.View entering={FadeInDown.duration(450)} className="items-center">
+          <Text className="text-4xl font-black tracking-tight text-slate-900">AquaCampo</Text>
+          <Text className="mt-1 font-semibold text-slate-500">
+            Preparando tu jornada de campo
+          </Text>
+        </Animated.View>
+        <Animated.View entering={FadeInUp.delay(80).duration(450)}>
+          <AquaIllustration compacta />
+        </Animated.View>
+        <ActivityIndicator size="large" color="#087C98" />
+        <View className="mt-4 h-1 w-28 overflow-hidden rounded-full bg-cyan-50">
+          <View className="h-full w-16 rounded-full bg-teal-500" />
         </View>
       </View>
     );
@@ -26,42 +32,3 @@ export default function Inicio() {
 
   return <Redirect href={sesion ? "/medidores" : "/login"} />;
 }
-
-const estilos = StyleSheet.create({
-  centro: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: AquaColores.blanco,
-    paddingHorizontal: 24,
-  },
-  marcaCaja: {
-    alignItems: "center",
-    marginBottom: -8,
-  },
-  marca: {
-    color: AquaColores.marino,
-    fontSize: 32,
-    fontWeight: "900",
-    letterSpacing: -1,
-  },
-  subtitulo: {
-    marginTop: 4,
-    color: AquaColores.textoSuave,
-    fontWeight: "600",
-  },
-  lineaCarga: {
-    width: 104,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 14,
-    backgroundColor: AquaColores.celesteSuave,
-    overflow: "hidden",
-  },
-  lineaCargaActiva: {
-    width: 56,
-    height: "100%",
-    borderRadius: 2,
-    backgroundColor: AquaColores.turquesa,
-  },
-});
